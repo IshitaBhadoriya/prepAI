@@ -1,31 +1,33 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { saveUser } from "../lib/database";
 
-// Step 1: Create the context object
 const AuthContext = createContext(null);
 
-// Step 2: Create the Provider component
-// This wraps the whole app and makes user data available everywhere
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get the current session when the app loads
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Listen for login/logout events and update state automatically
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const authUser = session?.user ?? null;
+      setUser(authUser);
       setLoading(false);
+
+      // When a user signs in, save them to our users table
+      // upsert means it's safe to call every login — won't create duplicates
+      if (authUser && _event === "SIGNED_IN") {
+        await saveUser(authUser);
+      }
     });
 
-    // Cleanup: stop listening when component unmounts
     return () => subscription.unsubscribe();
   }, []);
 
@@ -36,8 +38,6 @@ export function AuthProvider({ children }) {
   );
 }
 
-// Step 3: Custom hook so any component can easily access the user
-// Usage in any component: const { user, loading } = useAuth()
 export function useAuth() {
   return useContext(AuthContext);
 }
