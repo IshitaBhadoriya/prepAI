@@ -1,8 +1,8 @@
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY;
 
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
 
-async function callGemini(prompt, temperature = 0.7, maxTokens = 1024) {
+async function callGemini(prompt, temperature = 0.7, maxTokens = 2048) {
   const res = await fetch(GEMINI_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -19,6 +19,7 @@ async function callGemini(prompt, temperature = 0.7, maxTokens = 1024) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text;
 }
 
+// Call 1 — Generate 7 questions (1 API call per session)
 export async function generateQuestions(mode, subject, difficulty) {
   const modeMap = {
     hr: "behavioural and situational HR interview questions about teamwork, conflict, leadership, strengths, weaknesses, and career goals",
@@ -43,21 +44,7 @@ Example: ["Q1?","Q2?","Q3?","Q4?","Q5?","Q6?","Q7?"]`;
   return JSON.parse(cleaned);
 }
 
-export async function getFollowUp(question, answer, subject, followUpCount) {
-  if (followUpCount >= 2) return { action: "NEXT" };
-  const prompt = `You are a senior interviewer.
-Question: "${question}"
-Candidate's answer: "${answer}"
-${subject ? `Subject: ${subject}` : ""}
-If the answer is incomplete, ask ONE specific follow-up question.
-If the answer is complete, respond with only: NEXT
-Respond with ONLY the follow-up question OR only the word NEXT.`;
-
-  const text = await callGemini(prompt, 0.3, 256);
-  if (!text || text.trim().toUpperCase() === "NEXT") return { action: "NEXT" };
-  return { action: "FOLLOWUP", question: text.trim() };
-}
-
+// Call 2 — Generate full feedback (1 API call per session, at the end)
 export async function generateFeedback(sessionData) {
   const qaPairs = sessionData
     .map(

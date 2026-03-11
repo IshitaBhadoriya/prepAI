@@ -2,15 +2,14 @@ import { Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import InterviewSetup from "./pages/InterviewSetup";
+import InterviewSession from "./pages/InterviewSession";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 
 function App() {
   return (
     <Routes>
-      {/* Public route — anyone can visit */}
       <Route path="/" element={<Landing />} />
 
-      {/* Protected routes — must be logged in */}
       <Route
         path="/dashboard"
         element={
@@ -24,6 +23,14 @@ function App() {
         element={
           <ProtectedRoute>
             <InterviewSetup />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/interview/session"
+        element={
+          <ProtectedRoute>
+            <InterviewSession />
           </ProtectedRoute>
         }
       />

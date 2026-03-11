@@ -175,3 +175,44 @@ export async function updateStreak(userId) {
     })
     .eq("user_id", userId);
 }
+
+// Save a completed interview session to Supabase
+export async function saveSession(userId, sessionData) {
+  const { mode, subject, difficulty, answers, feedback } = sessionData;
+
+  // Step 1: Create the session record
+  const { data: session, error: sessionError } = await supabase
+    .from("sessions")
+    .insert({
+      user_id: userId,
+      mode,
+      subject,
+      difficulty,
+      overall_tech_score: feedback?.overallTechScore || 0,
+      overall_comm_score: feedback?.overallCommScore || 0,
+      overall_completeness_score: feedback?.overallCompletenessScore || 0,
+      summary: feedback?.summary || "",
+    })
+    .select()
+    .single();
+
+  if (sessionError) throw sessionError;
+
+  // Step 2: Save each answer
+  const answerRows = answers.map((item, index) => ({
+    session_id: session.id,
+    user_id: userId,
+    question: item.question,
+    answer: item.answer || "",
+    is_followup: item.isFollowup || false,
+    order_index: index,
+  }));
+
+  const { error: answersError } = await supabase
+    .from("answers")
+    .insert(answerRows);
+
+  if (answersError) throw answersError;
+
+  return session;
+}

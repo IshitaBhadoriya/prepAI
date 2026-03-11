@@ -66,10 +66,13 @@ function InterviewSetup() {
 
   function handleStart() {
     if (!canStart) return;
-    // We'll wire this up in Phase 4 when Gemini is ready
-    alert(
-      `Starting: ${selectedMode} | ${selectedSubject || "n/a"} | ${selectedDifficulty}`,
-    );
+    navigate("/interview/session", {
+      state: {
+        mode: selectedMode,
+        subject: selectedSubject,
+        difficulty: selectedDifficulty,
+      },
+    });
   }
 
   return (
