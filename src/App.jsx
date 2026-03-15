@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import InterviewSetup from "./pages/InterviewSetup";
 import InterviewSession from "./pages/InterviewSession";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+import InterviewFeedback from "./pages/InterviewFeedback";
 
 function App() {
   return (
@@ -31,6 +32,14 @@ function App() {
         element={
           <ProtectedRoute>
             <InterviewSession />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/interview/feedback"
+        element={
+          <ProtectedRoute>
+            <InterviewFeedback />
           </ProtectedRoute>
         }
       />
