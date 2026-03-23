@@ -1,5 +1,20 @@
 import { supabase } from "./supabase";
 
+/** Supabase/PostgREST can hang (paused project, network). Fail so retries can run. */
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`${label} timed out after ${ms}ms`)),
+        ms,
+      ),
+    ),
+  ]);
+}
+
+const SUPABASE_OP_TIMEOUT_MS = 25_000;
+
 // ─── USERS ────────────────────────────────────────────────────────────────────
 
 // Save user to our users table after they log in
@@ -74,24 +89,39 @@ export async function getUserStats(userId) {
   return { total, avgScore, bestScore };
 }
 
-// Insert a new session record — returns the created session with its id
 export async function createSession(userId, mode, subject, difficulty) {
-  const { data, error } = await supabase
-    .from("sessions")
-    .insert({
-      user_id: userId,
-      mode,
-      subject: subject || null,
-      difficulty,
-    })
-    .select() // .select() returns the created row, including the auto-generated id
-    .single(); // we inserted one row, so we expect one back
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`createSession attempt ${attempt}...`);
+      const { data, error } = await withTimeout(
+        supabase
+          .from("sessions")
+          .insert({
+            user_id: userId,
+            mode,
+            subject: subject || null,
+            difficulty,
+          })
+          .select("id")
+          .single(),
+        SUPABASE_OP_TIMEOUT_MS,
+        "sessions insert",
+      );
 
-  if (error) {
-    console.error("Error creating session:", error.message);
-    return null;
+      if (error) {
+        console.error(`Attempt ${attempt} error:`, error.message, error);
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+
+      console.log("createSession success:", data.id);
+      return data;
+    } catch (err) {
+      console.error(`Attempt ${attempt} exception:`, err.message);
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+    }
   }
-  return data;
+  return null;
 }
 
 // Update session scores after feedback is generated
@@ -102,17 +132,42 @@ export async function updateSessionScores(
   completenessScore,
   durationSeconds,
 ) {
-  const { error } = await supabase
-    .from("sessions")
-    .update({
-      tech_score: techScore,
-      comm_score: commScore,
-      completeness_score: completenessScore,
-      duration_seconds: durationSeconds,
-    })
-    .eq("id", sessionId);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`updateSessionScores attempt ${attempt}...`);
+      const { error } = await withTimeout(
+        supabase
+          .from("sessions")
+          .update({
+            tech_score: techScore,
+            comm_score: commScore,
+            completeness_score: completenessScore,
+            duration_seconds: durationSeconds,
+          })
+          .eq("id", sessionId),
+        SUPABASE_OP_TIMEOUT_MS,
+        "sessions update scores",
+      );
 
-  if (error) console.error("Error updating session scores:", error.message);
+      if (error) {
+        console.error(
+          `updateSessionScores attempt ${attempt} error:`,
+          error.message,
+        );
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+
+      console.log("updateSessionScores success!");
+      return;
+    } catch (err) {
+      console.error(
+        `updateSessionScores attempt ${attempt} exception:`,
+        err.message,
+      );
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
 }
 
 // ─── STREAKS ──────────────────────────────────────────────────────────────────
@@ -174,45 +229,4 @@ export async function updateStreak(userId) {
       last_active_date: today,
     })
     .eq("user_id", userId);
-}
-
-// Save a completed interview session to Supabase
-export async function saveSession(userId, sessionData) {
-  const { mode, subject, difficulty, answers, feedback } = sessionData;
-
-  // Step 1: Create the session record
-  const { data: session, error: sessionError } = await supabase
-    .from("sessions")
-    .insert({
-      user_id: userId,
-      mode,
-      subject,
-      difficulty,
-      overall_tech_score: feedback?.overallTechScore || 0,
-      overall_comm_score: feedback?.overallCommScore || 0,
-      overall_completeness_score: feedback?.overallCompletenessScore || 0,
-      summary: feedback?.summary || "",
-    })
-    .select()
-    .single();
-
-  if (sessionError) throw sessionError;
-
-  // Step 2: Save each answer
-  const answerRows = answers.map((item, index) => ({
-    session_id: session.id,
-    user_id: userId,
-    question: item.question,
-    answer: item.answer || "",
-    is_followup: item.isFollowup || false,
-    order_index: index,
-  }));
-
-  const { error: answersError } = await supabase
-    .from("answers")
-    .insert(answerRows);
-
-  if (answersError) throw answersError;
-
-  return session;
 }

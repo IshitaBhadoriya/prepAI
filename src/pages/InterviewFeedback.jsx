@@ -1,37 +1,70 @@
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import { generateFeedback } from "../lib/api";
+import {
+  createSession,
+  updateSessionScores,
+  updateStreak,
+} from "../lib/database";
 
 function InterviewFeedback() {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const hasFetched = useRef(false);
 
   const { answers, mode, subject, difficulty, userId } = state || {};
 
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!answers || answers.length === 0) {
       navigate("/interview/setup");
       return;
     }
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    async function saveToSupabase(result) {
+      try {
+        console.log("Background save starting...");
+        const session = await createSession(userId, mode, subject, difficulty);
+        console.log("createSession result:", session);
+        if (session?.id) {
+          await updateSessionScores(
+            session.id,
+            result.overallTechScore,
+            result.overallCommScore,
+            result.overallCompletenessScore,
+            null,
+          );
+          await updateStreak(userId);
+          setSaved(true);
+          console.log("Background save complete!");
+        }
+      } catch (err) {
+        console.error("Background save failed:", err.message);
+      }
+    }
+
     async function loadFeedback() {
+      console.log("loadFeedback started, userId:", userId);
       try {
         setLoading(true);
         const result = await generateFeedback(answers);
+        console.log("Feedback received!");
         setFeedback(result);
-        setLoading(false);
       } catch (err) {
         console.error("FEEDBACK ERROR:", err);
         setError("Failed to generate feedback. Please try again.");
+      } finally {
         setLoading(false);
       }
     }
+
     loadFeedback();
   }, []);
 
@@ -65,7 +98,7 @@ function InterviewFeedback() {
               Analysing your interview...
             </p>
             <p className="text-slate-400 text-sm mt-1">
-              Gemini is reviewing your answers and preparing feedback
+              Reviewing your answers and preparing feedback
             </p>
           </div>
         </div>
@@ -94,16 +127,15 @@ function InterviewFeedback() {
   return (
     <DashboardLayout>
       <div className="px-8 py-8 max-w-3xl">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white">Interview Feedback</h1>
           <p className="text-slate-400 text-sm mt-1 capitalize">
             {mode} · {difficulty}
             {subject ? ` · ${subject}` : ""}
+            {saved && <span className="ml-2 text-green-400">· Saved ✓</span>}
           </p>
         </div>
 
-        {/* Overall Scores */}
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mb-6">
           <h2 className="text-white font-semibold mb-4">Overall Scores</h2>
           <ScoreBar
@@ -117,7 +149,6 @@ function InterviewFeedback() {
           />
         </div>
 
-        {/* Summary */}
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mb-6">
           <h2 className="text-white font-semibold mb-2">Summary</h2>
           <p className="text-slate-300 text-sm leading-relaxed">
@@ -125,7 +156,6 @@ function InterviewFeedback() {
           </p>
         </div>
 
-        {/* What went well + Areas to improve */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
             <h2 className="text-green-400 font-semibold mb-3">
@@ -153,7 +183,6 @@ function InterviewFeedback() {
           </div>
         </div>
 
-        {/* Study Suggestions */}
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mb-6">
           <h2 className="text-blue-400 font-semibold mb-3">
             📚 Study Suggestions
@@ -167,7 +196,6 @@ function InterviewFeedback() {
           </ul>
         </div>
 
-        {/* Per-Question Breakdown */}
         <div className="mb-8">
           <h2 className="text-white font-semibold mb-4">
             Per-Question Breakdown
@@ -197,16 +225,13 @@ function InterviewFeedback() {
                     </span>
                   </div>
                 </div>
-
                 <p className="text-white text-sm font-medium mb-3">
                   {answers[i]?.question}
                 </p>
-
                 <div className="bg-slate-800/50 rounded-xl px-4 py-3 mb-4">
                   <p className="text-slate-400 text-xs mb-1">Your answer</p>
                   <p className="text-slate-300 text-sm">{answers[i]?.answer}</p>
                 </div>
-
                 <div className="space-y-3">
                   {q.whatWentWell && (
                     <div>
@@ -248,6 +273,40 @@ function InterviewFeedback() {
           >
             Start New Session →
           </button>
+          {!saved && (
+            <button
+              onClick={async () => {
+                console.log("Manual save clicked...");
+                const session = await createSession(
+                  userId,
+                  mode,
+                  subject,
+                  difficulty,
+                );
+                console.log("Session:", session);
+                if (session?.id) {
+                  await updateSessionScores(
+                    session.id,
+                    feedback.overallTechScore,
+                    feedback.overallCommScore,
+                    feedback.overallCompletenessScore,
+                    null,
+                  );
+                  await updateStreak(userId);
+                  setSaved(true);
+                  console.log("Manually saved!");
+                }
+              }}
+              className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-green-700 hover:bg-green-600 text-white transition-all border border-green-600"
+            >
+              💾 Save Results
+            </button>
+          )}
+          {saved && (
+            <div className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-slate-800 text-green-400 transition-all border border-slate-700 flex items-center justify-center">
+              ✓ Saved
+            </div>
+          )}
           <button
             onClick={() => navigate("/dashboard")}
             className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-slate-800 hover:bg-slate-700 text-white transition-all border border-slate-700"

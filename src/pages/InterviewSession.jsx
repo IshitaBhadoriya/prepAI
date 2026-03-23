@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import { generateQuestions } from "../lib/api";
-import { saveSession } from "../lib/database";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 
 function InterviewSession() {
@@ -24,6 +23,7 @@ function InterviewSession() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const hasLoaded = useRef(false);
 
   // Speech recognition
   const {
@@ -41,16 +41,24 @@ function InterviewSession() {
       navigate("/interview/setup");
       return;
     }
+    if (hasLoaded.current) return; // ← ADD THIS
+    hasLoaded.current = true;
     async function loadQuestions() {
       try {
         setLoading(true);
         setError("");
+
+        console.log("Step 1 — calling generateQuestions...");
         const qs = await generateQuestions(mode, subject, difficulty);
+        console.log("Step 2 — questions received:", qs);
+
         setQuestions(qs);
         setCurrentQuestion(qs[0]);
+
         setError("");
         setLoading(false);
       } catch (err) {
+        console.error("LOAD ERROR:", err);
         setError("Failed to load questions. Please go back and try again.");
         setLoading(false);
       }
