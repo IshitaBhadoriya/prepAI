@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       const authUser = session?.user ?? null;
       setUser(authUser);
       setLoading(false);
@@ -24,7 +24,9 @@ export function AuthProvider({ children }) {
       // When a user signs in, save them to our users table
       // upsert means it's safe to call every login — won't create duplicates
       if (authUser && _event === "SIGNED_IN") {
-        await saveUser(authUser);
+        setTimeout(() => {
+          void saveUser(authUser);
+        }, 0);
       }
     });
 

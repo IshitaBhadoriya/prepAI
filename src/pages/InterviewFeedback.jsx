@@ -30,9 +30,7 @@ function InterviewFeedback() {
 
     async function saveToSupabase(result) {
       try {
-        console.log("Background save starting...");
         const session = await createSession(userId, mode, subject, difficulty);
-        console.log("createSession result:", session);
         if (session?.id) {
           await updateSessionScores(
             session.id,
@@ -43,7 +41,6 @@ function InterviewFeedback() {
           );
           await updateStreak(userId);
           setSaved(true);
-          console.log("Background save complete!");
         }
       } catch (err) {
         console.error("Background save failed:", err.message);
@@ -51,12 +48,11 @@ function InterviewFeedback() {
     }
 
     async function loadFeedback() {
-      console.log("loadFeedback started, userId:", userId);
       try {
         setLoading(true);
         const result = await generateFeedback(answers);
-        console.log("Feedback received!");
         setFeedback(result);
+        void saveToSupabase(result);
       } catch (err) {
         console.error("FEEDBACK ERROR:", err);
         setError("Failed to generate feedback. Please try again.");
@@ -276,14 +272,12 @@ function InterviewFeedback() {
           {!saved && (
             <button
               onClick={async () => {
-                console.log("Manual save clicked...");
                 const session = await createSession(
                   userId,
                   mode,
                   subject,
                   difficulty,
                 );
-                console.log("Session:", session);
                 if (session?.id) {
                   await updateSessionScores(
                     session.id,
@@ -294,7 +288,6 @@ function InterviewFeedback() {
                   );
                   await updateStreak(userId);
                   setSaved(true);
-                  console.log("Manually saved!");
                 }
               }}
               className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-green-700 hover:bg-green-600 text-white transition-all border border-green-600"
