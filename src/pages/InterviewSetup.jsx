@@ -29,7 +29,6 @@ const subjects = {
     { id: "dbms", label: "DBMS" },
     { id: "os", label: "Operating Systems" },
     { id: "cn", label: "Computer Networks" },
-    { id: "general", label: "General Mix" },
   ],
 };
 
@@ -54,23 +53,90 @@ const difficulties = [
   },
 ];
 
+const roles = [
+  { id: "sde-intern", label: "SDE Intern" },
+  { id: "software-engineer", label: "Software Engineer" },
+  { id: "backend-engineer", label: "Backend Engineer" },
+  { id: "frontend-engineer", label: "Frontend Engineer" },
+  { id: "full-stack-developer", label: "Full Stack Developer" },
+  { id: "data-analyst", label: "Data Analyst" },
+  { id: "product-manager", label: "Product Manager" },
+];
+
+const questionRanges = [
+  { id: "short", label: "Short", desc: "3–5 questions" },
+  { id: "standard", label: "Standard", desc: "6–8 questions" },
+  { id: "extended", label: "Extended", desc: "9–12 questions" },
+];
+
+const communicationModes = [
+  {
+    id: "impromptu",
+    label: "Impromptu",
+    desc: "Thinking clarity, flow, and coherence",
+  },
+  {
+    id: "structured",
+    label: "Structured",
+    desc: "STAR-style structured answering",
+  },
+  {
+    id: "explain",
+    label: "Explain",
+    desc: "Simple, clear explanation for beginners",
+  },
+];
+
 function InterviewSetup() {
   const navigate = useNavigate();
   const [selectedMode, setSelectedMode] = useState(null);
-  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
+  const [selectedRole, setSelectedRole] = useState(roles[0].id);
+  const [selectedQuestionRange, setSelectedQuestionRange] = useState(
+    questionRanges[1].id,
+  );
+  const [selectedCommunicationMode, setSelectedCommunicationMode] = useState(
+    communicationModes[0].id,
+  );
 
   const needsSubject = selectedMode === "technical";
+  const needsCommunicationMode = selectedMode === "communication";
+  const needsRole = selectedMode !== "communication";
   const canStart =
-    selectedMode && selectedDifficulty && (!needsSubject || selectedSubject);
+    selectedMode &&
+    selectedDifficulty &&
+    selectedQuestionRange &&
+    (!needsRole || selectedRole) &&
+    (!needsSubject || selectedSubjects.length > 0) &&
+    (!needsCommunicationMode || selectedCommunicationMode);
+
+  function toggleSubject(subjectId) {
+    setSelectedSubjects((current) =>
+      current.includes(subjectId)
+        ? current.filter((item) => item !== subjectId)
+        : [...current, subjectId],
+    );
+  }
 
   function handleStart() {
     if (!canStart) return;
+
+    const technicalSubjects =
+      selectedMode === "technical" ? selectedSubjects : [];
+    const subjectSummary =
+      technicalSubjects.length > 0 ? technicalSubjects.join(", ") : null;
+
     navigate("/interview/session", {
       state: {
         mode: selectedMode,
-        subject: selectedSubject,
+        subject: subjectSummary,
+        selectedSubjects: technicalSubjects,
+        communicationMode:
+          selectedMode === "communication" ? selectedCommunicationMode : null,
         difficulty: selectedDifficulty,
+        role: selectedMode === "communication" ? null : selectedRole,
+        questionRange: selectedQuestionRange,
       },
     });
   }
@@ -96,7 +162,7 @@ function InterviewSetup() {
                 key={mode.id}
                 onClick={() => {
                   setSelectedMode(mode.id);
-                  setSelectedSubject(null);
+                  setSelectedSubjects([]);
                 }}
                 className={`text-left p-4 rounded-xl border transition-all ${
                   selectedMode === mode.id
@@ -118,20 +184,61 @@ function InterviewSetup() {
         {needsSubject && (
           <div className="mb-8">
             <h2 className="text-slate-300 font-medium mb-3 text-sm uppercase tracking-wider">
-              Subject
+              Subjects
             </h2>
+            <p className="text-slate-500 text-xs mb-3">
+              Choose one or more areas. The interview will balance coverage
+              across them.
+            </p>
             <div className="flex flex-wrap gap-2">
               {subjects.technical.map((sub) => (
                 <button
                   key={sub.id}
-                  onClick={() => setSelectedSubject(sub.id)}
+                  onClick={() => toggleSubject(sub.id)}
                   className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
-                    selectedSubject === sub.id
+                    selectedSubjects.includes(sub.id)
                       ? "border-blue-500 bg-blue-900/30 text-blue-400"
                       : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-white"
                   }`}
                 >
                   {sub.label}
+                </button>
+              ))}
+            </div>
+            {selectedSubjects.length > 0 && (
+              <p className="text-slate-500 text-xs mt-3">
+                {selectedSubjects.length} subject
+                {selectedSubjects.length > 1 ? "s" : ""} selected
+              </p>
+            )}
+          </div>
+        )}
+
+        {needsCommunicationMode && (
+          <div className="mb-8">
+            <h2 className="text-slate-300 font-medium mb-3 text-sm uppercase tracking-wider">
+              Communication Mode
+            </h2>
+            <p className="text-slate-500 text-xs mb-3">
+              Pick the kind of speaking challenge you want to practice.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {communicationModes.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedCommunicationMode(item.id)}
+                  className={`text-left p-4 rounded-xl border transition-all ${
+                    selectedCommunicationMode === item.id
+                      ? "border-cyan-500 bg-cyan-900/20"
+                      : "border-slate-700 bg-slate-900 hover:border-slate-600"
+                  }`}
+                >
+                  <div className="text-white font-medium text-sm">
+                    {item.label}
+                  </div>
+                  <div className="text-slate-400 text-xs mt-1">
+                    {item.desc}
+                  </div>
                 </button>
               ))}
             </div>
@@ -158,6 +265,54 @@ function InterviewSetup() {
                   {diff.label}
                 </div>
                 <div className="text-slate-400 text-xs mt-1">{diff.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {needsRole && (
+          <div className="mb-8">
+            <h2 className="text-slate-300 font-medium mb-3 text-sm uppercase tracking-wider">
+              Target Role
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {roles.map((role) => (
+                <button
+                  key={role.id}
+                  onClick={() => setSelectedRole(role.id)}
+                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                    selectedRole === role.id
+                      ? "border-blue-500 bg-blue-900/30 text-white"
+                      : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-white"
+                  }`}
+                >
+                  {role.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Question Range */}
+        <div className="mb-8">
+          <h2 className="text-slate-300 font-medium mb-3 text-sm uppercase tracking-wider">
+            Question Range
+          </h2>
+          <div className="flex gap-3">
+            {questionRanges.map((range) => (
+              <button
+                key={range.id}
+                onClick={() => setSelectedQuestionRange(range.id)}
+                className={`flex-1 p-4 rounded-xl border transition-all ${
+                  selectedQuestionRange === range.id
+                    ? "border-blue-500 bg-blue-900/30"
+                    : "border-slate-700 bg-slate-900 hover:border-slate-600"
+                }`}
+              >
+                <div className="text-white font-medium text-sm">
+                  {range.label}
+                </div>
+                <div className="text-slate-400 text-xs mt-1">{range.desc}</div>
               </button>
             ))}
           </div>

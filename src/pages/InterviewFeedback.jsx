@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import { generateFeedback } from "../lib/api";
@@ -8,12 +8,66 @@ import {
   updateStreak,
 } from "../lib/database";
 
+function formatLabel(value) {
+  const labels = {
+    hr: "HR",
+    dsa: "DSA",
+    dbms: "DBMS",
+    os: "Operating Systems",
+    cn: "Computer Networks",
+  };
+
+  if (!value) return "";
+  if (labels[value]) return labels[value];
+
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function InterviewFeedback() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const hasFetched = useRef(false);
 
-  const { answers, mode, subject, difficulty, userId } = state || {};
+  const {
+    answers,
+    mode,
+    subject,
+    selectedSubjects,
+    communicationMode,
+    difficulty,
+    role,
+    userId,
+  } = state || {};
+  const technicalSubjects = useMemo(() => {
+    if (Array.isArray(selectedSubjects) && selectedSubjects.length > 0) {
+      return selectedSubjects;
+    }
+
+    return subject
+      ? subject.split(",").map((item) => item.trim()).filter(Boolean)
+      : [];
+  }, [selectedSubjects, subject]);
+  const subjectSummary = useMemo(
+    () =>
+      technicalSubjects.length > 0
+        ? technicalSubjects.map((item) => formatLabel(item)).join(", ")
+        : mode === "communication" && communicationMode
+          ? formatLabel(communicationMode)
+          : subject || "",
+    [communicationMode, mode, subject, technicalSubjects],
+  );
+  const storedSubject = useMemo(
+    () =>
+      technicalSubjects.length > 0
+        ? technicalSubjects.join(", ")
+        : mode === "communication" && communicationMode
+          ? communicationMode
+          : subject || null,
+    [communicationMode, mode, subject, technicalSubjects],
+  );
 
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +84,12 @@ function InterviewFeedback() {
 
     async function saveToSupabase(result) {
       try {
-        const session = await createSession(userId, mode, subject, difficulty);
+        const session = await createSession(
+          userId,
+          mode,
+          storedSubject,
+          difficulty,
+        );
         if (session?.id) {
           await updateSessionScores(
             session.id,
@@ -50,7 +109,13 @@ function InterviewFeedback() {
     async function loadFeedback() {
       try {
         setLoading(true);
-        const result = await generateFeedback(answers);
+        const result = await generateFeedback(answers, {
+          mode,
+          subject: technicalSubjects.length > 0 ? technicalSubjects : subject,
+          communicationMode,
+          difficulty,
+          role,
+        });
         setFeedback(result);
         void saveToSupabase(result);
       } catch (err) {
@@ -62,7 +127,18 @@ function InterviewFeedback() {
     }
 
     loadFeedback();
-  }, []);
+  }, [
+    answers,
+    communicationMode,
+    difficulty,
+    mode,
+    navigate,
+    role,
+    storedSubject,
+    subject,
+    technicalSubjects,
+    userId,
+  ]);
 
   function ScoreBar({ label, score }) {
     const percentage = (score / 10) * 100;
@@ -83,6 +159,13 @@ function InterviewFeedback() {
       </div>
     );
   }
+
+  const knowledgeLabel =
+    mode === "technical"
+      ? "Technical Knowledge"
+      : mode === "hr"
+        ? "HR Judgment"
+        : "Content Quality";
 
   if (loading) {
     return (
@@ -127,17 +210,14 @@ function InterviewFeedback() {
           <h1 className="text-2xl font-bold text-white">Interview Feedback</h1>
           <p className="text-slate-400 text-sm mt-1 capitalize">
             {mode} · {difficulty}
-            {subject ? ` · ${subject}` : ""}
+            {subjectSummary ? ` · ${subjectSummary}` : ""}
             {saved && <span className="ml-2 text-green-400">· Saved ✓</span>}
           </p>
         </div>
 
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mb-6">
           <h2 className="text-white font-semibold mb-4">Overall Scores</h2>
-          <ScoreBar
-            label="Technical Knowledge"
-            score={feedback.overallTechScore}
-          />
+          <ScoreBar label={knowledgeLabel} score={feedback.overallTechScore} />
           <ScoreBar label="Communication" score={feedback.overallCommScore} />
           <ScoreBar
             label="Completeness"
@@ -275,7 +355,7 @@ function InterviewFeedback() {
                 const session = await createSession(
                   userId,
                   mode,
-                  subject,
+                  storedSubject,
                   difficulty,
                 );
                 if (session?.id) {

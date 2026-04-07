@@ -1,16 +1,69 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../components/layout/DashboardLayout";
-import { generateQuestions } from "../lib/api";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
+import { generateQuestions, generateFollowUp } from "../lib/api";
+
+function formatLabel(value) {
+  const labels = {
+    hr: "HR",
+    dsa: "DSA",
+    dbms: "DBMS",
+    os: "Operating Systems",
+    cn: "Computer Networks",
+  };
+
+  if (!value) return "";
+  if (labels[value]) return labels[value];
+
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 function InterviewSession() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { mode, subject, difficulty } = state || {};
+  const {
+    mode,
+    subject,
+    selectedSubjects,
+    communicationMode,
+    difficulty,
+    role,
+    questionRange,
+  } = state || {};
+  const technicalSubjects = useMemo(() => {
+    if (Array.isArray(selectedSubjects) && selectedSubjects.length > 0) {
+      return selectedSubjects;
+    }
+
+    return subject
+      ? subject.split(",").map((item) => item.trim()).filter(Boolean)
+      : [];
+  }, [selectedSubjects, subject]);
+  const subjectSummary = useMemo(
+    () =>
+      technicalSubjects.length > 0
+        ? technicalSubjects.map((item) => formatLabel(item)).join(", ")
+        : "",
+    [technicalSubjects],
+  );
+  const sessionContextLabel = useMemo(() => {
+    if (mode === "technical") {
+      return subjectSummary;
+    }
+
+    if (mode === "communication" && communicationMode) {
+      return formatLabel(communicationMode);
+    }
+
+    return "";
+  }, [communicationMode, mode, subjectSummary]);
 
   // Session state
   const [questions, setQuestions] = useState([]);
@@ -37,11 +90,15 @@ function InterviewSession() {
 
   // Load questions on mount
   useEffect(() => {
-    if (!mode || !difficulty) {
+    if (
+      !mode ||
+      !difficulty ||
+      (mode === "technical" && technicalSubjects.length === 0)
+    ) {
       navigate("/interview/setup");
       return;
     }
-    if (hasLoaded.current) return; // ← ADD THIS
+    if (hasLoaded.current) return;
     hasLoaded.current = true;
     async function loadQuestions() {
       try {
@@ -49,7 +106,14 @@ function InterviewSession() {
         setError("");
 
         console.log("Step 1 — calling generateQuestions...");
-        const qs = await generateQuestions(mode, subject, difficulty);
+        const qs = await generateQuestions(
+          mode,
+          technicalSubjects,
+          difficulty,
+          role,
+          questionRange,
+          communicationMode,
+        );
         console.log("Step 2 — questions received:", qs);
 
         setQuestions(qs);
@@ -64,7 +128,15 @@ function InterviewSession() {
       }
     }
     loadQuestions();
-  }, []);
+  }, [
+    communicationMode,
+    difficulty,
+    mode,
+    navigate,
+    questionRange,
+    role,
+    technicalSubjects,
+  ]);
 
   // Sync speech transcript to text answer
   useEffect(() => {
@@ -78,6 +150,8 @@ function InterviewSession() {
 
   async function handleNext() {
     const answer = textAnswer.trim();
+    const allowFollowUp = mode !== "communication";
+
     if (!answer) {
       setError("Please provide an answer before continuing.");
       return;
@@ -85,33 +159,79 @@ function InterviewSession() {
 
     if (isListening) stopListening();
 
+    setSubmitting(true);
+    setError("");
+
     const newAnswers = [
       ...answers,
       {
         question: currentQuestion,
         answer,
-        isFollowup: false,
+        isFollowup,
       },
     ];
-    setAnswers(newAnswers);
-    setError("");
 
-    const nextIndex = currentIndex + 1;
-    if (nextIndex >= totalQuestions) {
-      navigate("/interview/feedback", {
-        state: {
-          answers: newAnswers,
+    try {
+      // 🧠 STEP 1: Decide if follow-up should happen
+      if (allowFollowUp && !isFollowup && followUpCount < 1) {
+        const followUp = await generateFollowUp(
+          currentQuestion,
+          answer,
+          role,
           mode,
-          subject,
-          difficulty,
-          userId: user?.id,
-        },
-      });
-    } else {
+          technicalSubjects,
+          communicationMode,
+        );
+
+        if (followUp && followUp.length > 5) {
+          setCurrentQuestion(followUp);
+          setIsFollowup(true);
+          setFollowUpCount(1);
+          setAnswers(newAnswers);
+          setTextAnswer("");
+          resetTranscript();
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      // 🧠 STEP 2: Move to next main question
+      const nextIndex = currentIndex + 1;
+
+      if (nextIndex >= questions.length) {
+        navigate("/interview/feedback", {
+          state: {
+            answers: newAnswers,
+            mode,
+            subject:
+              technicalSubjects.length > 0
+                ? technicalSubjects.join(", ")
+                : subject || null,
+            selectedSubjects: technicalSubjects,
+            communicationMode,
+            difficulty,
+            role,
+            userId: user?.id,
+          },
+        });
+        return;
+      }
+
+      setAnswers(newAnswers);
       setCurrentIndex(nextIndex);
       setCurrentQuestion(questions[nextIndex]);
+
+      // Reset follow-up state
+      setIsFollowup(false);
+      setFollowUpCount(0);
+
       setTextAnswer("");
       resetTranscript();
+    } catch (err) {
+      console.error("Follow-up error:", err);
+      setError("Something went wrong. Try again.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -126,7 +246,7 @@ function InterviewSession() {
               Preparing your questions...
             </p>
             <p className="text-slate-400 text-sm mt-1">
-              Gemini is crafting personalised questions for you
+              Preparing a personalised interview for you
             </p>
           </div>
         </div>
@@ -142,7 +262,7 @@ function InterviewSession() {
           <div>
             <p className="text-slate-400 text-sm capitalize">
               {mode} · {difficulty}
-              {subject ? ` · ${subject}` : ""}
+              {sessionContextLabel ? ` · ${sessionContextLabel}` : ""}
             </p>
           </div>
           <span className="text-slate-400 text-sm">
