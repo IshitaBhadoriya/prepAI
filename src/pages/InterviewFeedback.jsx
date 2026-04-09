@@ -6,6 +6,7 @@ import {
   createSession,
   updateSessionScores,
   updateStreak,
+  saveSessionFeedback,
 } from "../lib/database";
 
 function formatLabel(value) {
@@ -47,7 +48,10 @@ function InterviewFeedback() {
     }
 
     return subject
-      ? subject.split(",").map((item) => item.trim()).filter(Boolean)
+      ? subject
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)
       : [];
   }, [selectedSubjects, subject]);
   const subjectSummary = useMemo(
@@ -98,6 +102,7 @@ function InterviewFeedback() {
             result.overallCompletenessScore,
             null,
           );
+          await saveSessionFeedback(session.id, result);
           await updateStreak(userId);
           setSaved(true);
         }
@@ -366,6 +371,7 @@ function InterviewFeedback() {
                     feedback.overallCompletenessScore,
                     null,
                   );
+                  await saveSessionFeedback(session.id, feedback);
                   await updateStreak(userId);
                   setSaved(true);
                 }

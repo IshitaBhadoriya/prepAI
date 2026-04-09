@@ -20,7 +20,10 @@ function sleep(ms) {
 }
 
 function createUuid() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
 
@@ -141,15 +144,13 @@ export async function createSession(userId, mode, subject, difficulty) {
     try {
       const sessionId = createUuid();
       const { error } = await withTimeout(
-        supabase
-          .from("sessions")
-          .insert({
-            id: sessionId,
-            user_id: userId,
-            mode,
-            subject: subject || null,
-            difficulty,
-          }),
+        supabase.from("sessions").insert({
+          id: sessionId,
+          user_id: userId,
+          mode,
+          subject: subject || null,
+          difficulty,
+        }),
         SUPABASE_OP_TIMEOUT_MS,
         "sessions insert",
       );
@@ -260,7 +261,10 @@ export async function updateStreak(userId) {
   );
 
   if (existingError) {
-    console.error("Error fetching streak before update:", existingError.message);
+    console.error(
+      "Error fetching streak before update:",
+      existingError.message,
+    );
     return;
   }
 
@@ -316,5 +320,42 @@ export async function updateStreak(userId) {
 
   if (error) {
     console.error("Error updating streak:", error.message, error);
+  }
+}
+// Save full feedback JSON to a session
+export async function saveSessionFeedback(sessionId, feedbackJson) {
+  if (!sessionId) return;
+  try {
+    const { error } = await withTimeout(
+      supabase
+        .from("sessions")
+        .update({ feedback_json: feedbackJson })
+        .eq("id", sessionId),
+      SUPABASE_OP_TIMEOUT_MS,
+      "sessions feedback update",
+    );
+    if (error) console.error("Error saving feedback:", error.message);
+  } catch (err) {
+    console.error("saveSessionFeedback exception:", err.message);
+  }
+}
+
+// Get a single session with its feedback
+export async function getSessionWithFeedback(sessionId) {
+  if (!sessionId) return null;
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from("sessions").select("*").eq("id", sessionId).single(),
+      SUPABASE_OP_TIMEOUT_MS,
+      "session fetch",
+    );
+    if (error) {
+      console.error("Error fetching session:", error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error("getSessionWithFeedback exception:", err.message);
+    return null;
   }
 }

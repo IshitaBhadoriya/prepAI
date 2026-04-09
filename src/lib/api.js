@@ -23,12 +23,10 @@ const TECHNICAL_SUBJECT_GUIDANCE = {
 };
 
 const DIFFICULTY_PROGRESSIONS = {
-  easy:
-    "start with straightforward fundamentals, then move into applied reasoning, and end with slightly tougher follow-ups or scenario-based questions",
+  easy: "start with straightforward fundamentals, then move into applied reasoning, and end with slightly tougher follow-ups or scenario-based questions",
   medium:
     "start with solid fundamentals, then move into applied interview problems, and end with deeper trade-offs, debugging, or design judgement",
-  hard:
-    "start at a strong interview baseline, then increase into multi-step reasoning, optimization, edge cases, and senior-level trade-off discussion",
+  hard: "start at a strong interview baseline, then increase into multi-step reasoning, optimization, edge cases, and senior-level trade-off discussion",
 };
 
 const MODE_CONFIG = {
@@ -105,7 +103,10 @@ function normalizeSubjectInput(subjectInput) {
     });
 }
 
-function formatSubjectList(subjectInput, fallback = "General Computer Science") {
+function formatSubjectList(
+  subjectInput,
+  fallback = "General Computer Science",
+) {
   const subjects = normalizeSubjectInput(subjectInput);
 
   if (subjects.length === 0) {
@@ -315,7 +316,9 @@ function normalizeCommunicationEvaluation(data) {
 function averageScore(values) {
   const valid = values.filter((value) => Number.isFinite(value));
   if (valid.length === 0) return 0;
-  return clampScore(valid.reduce((sum, value) => sum + value, 0) / valid.length);
+  return clampScore(
+    valid.reduce((sum, value) => sum + value, 0) / valid.length,
+  );
 }
 
 function getWeakestCommunicationAreas(scores) {
@@ -342,18 +345,37 @@ function createCommunicationStudySuggestion(area) {
 }
 
 function summarizeCommunicationPerformance(averageScores) {
-  const strongest = Object.entries(averageScores).sort((a, b) => b[1] - a[1])[0];
-  const weakest = Object.entries(averageScores).sort((a, b) => a[1] - b[1])[0];
+  const entries = Object.entries(averageScores).sort((a, b) => b[1] - a[1]);
+  const strongest = entries[0];
+  const weakest = entries[entries.length - 1];
 
-  if (!strongest || !weakest) {
-    return "The communication round was evaluated, but the overall summary was incomplete.";
+  if (!strongest || !weakest || strongest[0] === weakest[0]) {
+    return "The communication round was evaluated. Focus on building clearer structure and more deliberate phrasing to sound interview-ready.";
   }
 
-  return `Your strongest area was ${strongest[0]}, while ${weakest[0]} was the main gap. The answers showed usable ideas, but they still need tighter delivery, better structure, and more deliberate phrasing to sound interview-ready.`;
+  return `Your strongest area was ${strongest[0]} (${strongest[1]}/10), while ${weakest[0]} (${weakest[1]}/10) was the main gap. The answers showed usable ideas, but they still need tighter delivery, better structure, and more deliberate phrasing to sound interview-ready.`;
 }
 
 async function evaluateCommunicationAnswer(question, answer, selectedMode) {
   const communicationMode = inferCommunicationEvalMode(question, selectedMode);
+  const trimmedAnswer = String(answer || "").trim();
+  if (trimmedAnswer.length < 10) {
+    return normalizeCommunicationEvaluation({
+      scores: { clarity: 0, structure: 0, fluency: 0, depth: 0, relevance: 0 },
+      summary: "The candidate did not provide a meaningful answer.",
+      whatWentWell: [
+        "No strengths to highlight — the answer was too brief to evaluate.",
+      ],
+      issues: [
+        "The answer was too short to demonstrate any communication ability.",
+        "No structure, depth, or relevance could be assessed.",
+        "A complete, thoughtful response is required.",
+      ],
+      improvedAnswer:
+        "A proper answer to this question would require the candidate to describe their approach in detail, using specific examples and structured reasoning.",
+    });
+  }
+
   const prompt = `
 You are a senior communication coach and interviewer.
 
@@ -638,6 +660,9 @@ export async function generateQuestions(
     - Aim for this broad interview flow: ${technicalSequence}
     - Increase difficulty across the whole set, not separately within each subject.
     - Keep every question explicitly technical, role-aware, and realistic for ${roleLabel}.
+    - DO NOT ask questions that require writing or running code (no "write a function", no "implement this algorithm", no "code this").
+    - SQL query questions are allowed (e.g. write a SELECT query) but do NOT ask candidates to design a full database schema from scratch.
+    - Focus on conceptual understanding, reasoning, trade-offs, and applied problem-solving instead.
     - Subject guidance:
 ${technicalGuidance}`
       : mode === "hr"

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getUserSessions, getUserStats, getStreak } from "../lib/database";
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -20,63 +21,6 @@ import {
   PolarRadiusAxis,
 } from "recharts";
 
-// ─── Dummy Data ───────────────────────────────────────────────────────────────
-
-const dummyScoreOverTime = [
-  { date: "Mar 1", score: 4.2 },
-  { date: "Mar 3", score: 5.0 },
-  { date: "Mar 5", score: 4.7 },
-  { date: "Mar 7", score: 6.1 },
-  { date: "Mar 9", score: 5.8 },
-  { date: "Mar 11", score: 7.0 },
-  { date: "Mar 13", score: 6.5 },
-  { date: "Mar 15", score: 7.8 },
-];
-
-const dummySubjectScores = [
-  { subject: "DSA", score: 6.2 },
-  { subject: "DBMS", score: 4.5 },
-  { subject: "OS", score: 7.1 },
-  { subject: "CN", score: 3.8 },
-  { subject: "General", score: 6.8 },
-];
-
-const dummyWeakAreas = [
-  { area: "Technical", score: 5.1 },
-  { area: "Communication", score: 7.2 },
-  { area: "Completeness", score: 4.3 },
-];
-
-// Generate dummy heatmap data — last 16 weeks
-function generateHeatmapData() {
-  const weeks = [];
-  const today = new Date();
-  for (let w = 15; w >= 0; w--) {
-    const days = [];
-    for (let d = 0; d < 7; d++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - w * 7 - (6 - d));
-      // Randomly assign 0–3 sessions, with more recent = more active
-      const recencyBoost = w < 4 ? 1 : 0;
-      const count =
-        Math.random() < 0.35 + recencyBoost * 0.2
-          ? Math.floor(Math.random() * 3) + 1
-          : 0;
-      days.push({
-        date: date.toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-        }),
-        count,
-      });
-    }
-    weeks.push(days);
-  }
-  return weeks;
-}
-
-const heatmapData = generateHeatmapData();
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function computeReadiness(avgScore, streak, total) {
@@ -92,10 +36,112 @@ function computeReadiness(avgScore, streak, total) {
 }
 
 function heatmapColor(count) {
-  if (count === 0) return "#1e293b"; // slate-800
-  if (count === 1) return "#1e3a5f"; // blue-900
-  if (count === 2) return "#1d4ed8"; // blue-700
-  return "#3b82f6"; // blue-500
+  if (count === 0) return "#1e293b";
+  if (count === 1) return "#1e3a5f";
+  if (count === 2) return "#1d4ed8";
+  return "#3b82f6";
+}
+
+// Build real chart data from sessions array
+function buildScoreOverTime(sessions) {
+  return [...sessions]
+    .reverse()
+    .map((s) => {
+      const vals = [s.tech_score, s.comm_score, s.completeness_score].filter(
+        Boolean,
+      );
+      const avg =
+        vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+      const date = new Date(s.created_at).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+      });
+      return avg !== null ? { date, score: parseFloat(avg.toFixed(1)) } : null;
+    })
+    .filter(Boolean);
+}
+
+function buildPerformanceBreakdown(sessions) {
+  const scored = sessions.filter(
+    (s) => s.tech_score || s.comm_score || s.completeness_score,
+  );
+  if (scored.length === 0) return null;
+  const avg = (key) => {
+    const vals = scored.map((s) => s[key]).filter(Boolean);
+    return vals.length > 0
+      ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1))
+      : 0;
+  };
+  return [
+    { area: "Technical", score: avg("tech_score") },
+    { area: "Communication", score: avg("comm_score") },
+    { area: "Completeness", score: avg("completeness_score") },
+  ];
+}
+
+function buildSubjectRadar(sessions) {
+  const subjectMap = {
+    dsa: "DSA",
+    dbms: "DBMS",
+    os: "OS",
+    cn: "CN",
+    general: "General",
+  };
+  const scored = sessions.filter(
+    (s) => s.subject && (s.tech_score || s.comm_score || s.completeness_score),
+  );
+  if (scored.length === 0) return null;
+  const grouped = {};
+  for (const s of scored) {
+    const subjects = s.subject
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const avg = [s.tech_score, s.comm_score, s.completeness_score].filter(
+      Boolean,
+    );
+    const score =
+      avg.length > 0 ? avg.reduce((a, b) => a + b, 0) / avg.length : 0;
+    for (const subj of subjects) {
+      if (!grouped[subj]) grouped[subj] = [];
+      grouped[subj].push(score);
+    }
+  }
+  return Object.entries(grouped).map(([key, vals]) => ({
+    subject: subjectMap[key] || key.toUpperCase(),
+    score: parseFloat(
+      (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1),
+    ),
+  }));
+}
+
+function buildHeatmapFromSessions(sessions) {
+  // Count sessions per day
+  const dayCounts = {};
+  for (const s of sessions) {
+    const day = new Date(s.created_at).toISOString().split("T")[0];
+    dayCounts[day] = (dayCounts[day] || 0) + 1;
+  }
+
+  const weeks = [];
+  const today = new Date();
+  for (let w = 15; w >= 0; w--) {
+    const days = [];
+    for (let d = 0; d < 7; d++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - w * 7 - (6 - d));
+      const key = date.toISOString().split("T")[0];
+      days.push({
+        date: date.toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+        }),
+        count: Math.min(dayCounts[key] || 0, 3),
+      });
+    }
+    weeks.push(days);
+  }
+  return weeks;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -119,18 +165,11 @@ function StatCard({ icon, label, value, sub, color, highlight }) {
   );
 }
 
-function SessionRow({ session }) {
+function SessionRow({ session, onClick }) {
   const modeLabel = {
     hr: "HR Round",
     communication: "Communication",
     technical: "Technical",
-  };
-  const subjectLabel = {
-    dsa: "DSA",
-    dbms: "DBMS",
-    os: "OS",
-    cn: "CN",
-    general: "General Mix",
   };
   const avgScore = [
     session.tech_score,
@@ -146,15 +185,24 @@ function SessionRow({ session }) {
     month: "short",
     year: "numeric",
   });
+  const hasFeedback = !!session.feedback_json;
+
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 last:border-0 hover:bg-slate-800/30 transition-colors">
+    <div
+      onClick={() => hasFeedback && onClick(session)}
+      className={`flex items-center justify-between px-6 py-4 border-b border-slate-800 last:border-0 transition-colors ${hasFeedback ? "hover:bg-slate-800/30 cursor-pointer" : "opacity-60"}`}
+    >
       <div>
-        <div className="text-white text-sm font-medium">
+        <div className="text-white text-sm font-medium flex items-center gap-2">
           {modeLabel[session.mode] || session.mode}
           {session.subject && (
-            <span className="text-slate-400 font-normal">
-              {" "}
-              — {subjectLabel[session.subject] || session.subject}
+            <span className="text-slate-400 font-normal text-xs">
+              · {session.subject}
+            </span>
+          )}
+          {hasFeedback && (
+            <span className="text-blue-400 text-xs font-normal">
+              → View feedback
             </span>
           )}
         </div>
@@ -199,15 +247,12 @@ function CustomTooltip({ active, payload, label }) {
   return null;
 }
 
-// GitHub-style heatmap
 function ActivityHeatmap({ data }) {
   const [tooltip, setTooltip] = useState(null);
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
   return (
     <div>
       <div className="flex gap-1">
-        {/* Day labels */}
         <div className="flex flex-col gap-1 mr-1 mt-5">
           {dayLabels.map((d, i) => (
             <div
@@ -218,14 +263,13 @@ function ActivityHeatmap({ data }) {
             </div>
           ))}
         </div>
-        {/* Week columns */}
         <div className="flex gap-1 flex-1">
           {data.map((week, wi) => (
             <div key={wi} className="flex flex-col gap-1 flex-1">
               {week.map((day, di) => (
                 <div
                   key={di}
-                  className="rounded-sm cursor-pointer transition-opacity hover:opacity-80 relative"
+                  className="rounded-sm cursor-pointer transition-opacity hover:opacity-80"
                   style={{
                     backgroundColor: heatmapColor(day.count),
                     aspectRatio: "1",
@@ -241,8 +285,6 @@ function ActivityHeatmap({ data }) {
           ))}
         </div>
       </div>
-
-      {/* Legend */}
       <div className="flex items-center gap-1.5 mt-3 justify-end">
         <span className="text-slate-600 text-xs">Less</span>
         {[0, 1, 2, 3].map((c) => (
@@ -254,8 +296,6 @@ function ActivityHeatmap({ data }) {
         ))}
         <span className="text-slate-600 text-xs">More</span>
       </div>
-
-      {/* Tooltip */}
       {tooltip && (
         <div
           className="fixed z-50 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 pointer-events-none"
@@ -271,10 +311,177 @@ function ActivityHeatmap({ data }) {
   );
 }
 
+// ─── Session Feedback Modal ───────────────────────────────────────────────────
+
+function SessionFeedbackModal({ session, onClose }) {
+  const f = session.feedback_json;
+  if (!f) return null;
+
+  function ScoreBar({ label, score }) {
+    const pct = (score / 10) * 100;
+    const color =
+      score >= 7 ? "bg-green-500" : score >= 4 ? "bg-yellow-500" : "bg-red-500";
+    return (
+      <div className="mb-3">
+        <div className="flex justify-between mb-1">
+          <span className="text-slate-300 text-sm">{label}</span>
+          <span className="text-white text-sm font-semibold">{score}/10</span>
+        </div>
+        <div className="w-full h-2 bg-slate-800 rounded-full">
+          <div
+            className={`h-2 rounded-full transition-all duration-700 ${color}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const date = new Date(session.created_at).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 overflow-y-auto py-8 px-4">
+      <div className="bg-slate-950 border border-slate-700 rounded-2xl w-full max-w-2xl">
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+          <div>
+            <h2 className="text-white font-semibold">Session Feedback</h2>
+            <p className="text-slate-400 text-xs mt-0.5 capitalize">
+              {session.mode} · {session.difficulty} · {date}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white text-xl leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="px-6 py-6 space-y-6">
+          {/* Scores */}
+          <div className="bg-slate-900 rounded-xl p-5">
+            <h3 className="text-white font-medium mb-4">Overall Scores</h3>
+            <ScoreBar label="Technical / Content" score={f.overallTechScore} />
+            <ScoreBar label="Communication" score={f.overallCommScore} />
+            <ScoreBar label="Completeness" score={f.overallCompletenessScore} />
+          </div>
+
+          {/* Summary */}
+          <div className="bg-slate-900 rounded-xl p-5">
+            <h3 className="text-white font-medium mb-2">Summary</h3>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              {f.summary}
+            </p>
+          </div>
+
+          {/* What went well + Areas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-slate-900 rounded-xl p-5">
+              <h3 className="text-green-400 font-medium mb-3">
+                ✅ What Went Well
+              </h3>
+              <ul className="space-y-1.5">
+                {f.whatWentWell?.map((item, i) => (
+                  <li key={i} className="text-slate-300 text-sm">
+                    • {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-slate-900 rounded-xl p-5">
+              <h3 className="text-yellow-400 font-medium mb-3">
+                ⚠️ Areas to Improve
+              </h3>
+              <ul className="space-y-1.5">
+                {f.areasToImprove?.map((item, i) => (
+                  <li key={i} className="text-slate-300 text-sm">
+                    • {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Study suggestions */}
+          <div className="bg-slate-900 rounded-xl p-5">
+            <h3 className="text-blue-400 font-medium mb-3">
+              📚 Study Suggestions
+            </h3>
+            <ul className="space-y-1.5">
+              {f.studySuggestions?.map((item, i) => (
+                <li key={i} className="text-slate-300 text-sm">
+                  • {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Per question */}
+          {f.perQuestion?.length > 0 && (
+            <div>
+              <h3 className="text-white font-medium mb-3">
+                Per-Question Breakdown
+              </h3>
+              <div className="space-y-3">
+                {f.perQuestion.map((q, i) => (
+                  <div key={i} className="bg-slate-900 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-slate-400 text-xs font-medium">
+                        Question {i + 1}
+                      </span>
+                      <div className="flex gap-2 text-xs text-slate-400">
+                        <span>
+                          T:{" "}
+                          <span className="text-white">{q.techScore}/10</span>
+                        </span>
+                        <span>
+                          C:{" "}
+                          <span className="text-white">{q.commScore}/10</span>
+                        </span>
+                        <span>
+                          ✓:{" "}
+                          <span className="text-white">
+                            {q.completenessScore}/10
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                    {q.whatWentWell && (
+                      <p className="text-green-400 text-xs mb-1">
+                        ✅ {q.whatWentWell}
+                      </p>
+                    )}
+                    {q.whatWasMissed && (
+                      <p className="text-yellow-400 text-xs mb-1">
+                        ⚠️ {q.whatWasMissed}
+                      </p>
+                    )}
+                    {q.idealAnswer && (
+                      <p className="text-blue-400 text-xs">
+                        💡 {q.idealAnswer}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -283,6 +490,7 @@ function Dashboard() {
   });
   const [streak, setStreak] = useState({ current_streak: 0 });
   const [loadingData, setLoadingData] = useState(true);
+  const [selectedSession, setSelectedSession] = useState(null);
 
   const firstName =
     user?.user_metadata?.full_name?.split(" ")[0] ||
@@ -305,18 +513,40 @@ function Dashboard() {
     loadData();
   }, [user]);
 
-  const weakArea = dummyWeakAreas.reduce((min, curr) =>
-    curr.score < min.score ? curr : min,
+  // Real chart data computed from sessions
+  const scoreOverTime = useMemo(() => buildScoreOverTime(sessions), [sessions]);
+  const performanceBreakdown = useMemo(
+    () => buildPerformanceBreakdown(sessions),
+    [sessions],
   );
+  const subjectRadar = useMemo(() => buildSubjectRadar(sessions), [sessions]);
+  const heatmapData = useMemo(
+    () => buildHeatmapFromSessions(sessions),
+    [sessions],
+  );
+
+  const weakArea = performanceBreakdown
+    ? performanceBreakdown.reduce((min, curr) =>
+        curr.score < min.score ? curr : min,
+      )
+    : null;
 
   const readiness = loadingData
     ? null
     : computeReadiness(stats.avgScore, streak.current_streak, stats.total);
+  const hasEnoughData =
+    sessions.filter((s) => s.tech_score || s.comm_score).length >= 2;
 
   return (
     <DashboardLayout>
+      {selectedSession && (
+        <SessionFeedbackModal
+          session={selectedSession}
+          onClose={() => setSelectedSession(null)}
+        />
+      )}
+
       <div className="px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white">Hey, {firstName} 👋</h1>
           <p className="text-slate-400 text-sm mt-1">
@@ -375,165 +605,183 @@ function Dashboard() {
           </a>
         </div>
 
-        {/* Row 1 — Score Over Time + Performance Breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-white font-semibold">Score Over Time</h2>
-              <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
-                Demo data
-              </span>
-            </div>
-            <p className="text-slate-500 text-xs mb-4">
-              Your average score per session
+        {/* Charts — show real data or empty state */}
+        {!hasEnoughData ? (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 mb-8 text-center">
+            <div className="text-4xl mb-3">📊</div>
+            <h3 className="text-white font-semibold mb-1">
+              Complete 2+ sessions to see your charts
+            </h3>
+            <p className="text-slate-500 text-sm">
+              Your performance trends will appear here once you have enough
+              data.
             </p>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={dummyScoreOverTime}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "#64748b", fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={[0, 10]}
-                  tick={{ fill: "#64748b", fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="score"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  dot={{ fill: "#3b82f6", r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
           </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-white font-semibold">
-                Performance Breakdown
-              </h2>
-              <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
-                Demo data
-              </span>
-            </div>
-            <p className="text-slate-500 text-xs mb-4">
-              Scores across all 3 evaluation areas
-            </p>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={dummyWeakAreas} barSize={40}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis
-                  dataKey="area"
-                  tick={{ fill: "#64748b", fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={[0, 10]}
-                  tick={{ fill: "#64748b", fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-                  {dummyWeakAreas.map((entry, index) => (
-                    <Cell
-                      key={index}
-                      fill={
-                        entry.score >= 7
-                          ? "#22c55e"
-                          : entry.score >= 4
-                            ? "#eab308"
-                            : "#ef4444"
-                      }
+        ) : (
+          <>
+            {/* Row 1 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h2 className="text-white font-semibold mb-1">
+                  Score Over Time
+                </h2>
+                <p className="text-slate-500 text-xs mb-4">
+                  Your average score per session
+                </p>
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={scoreOverTime}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
                     />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-            <div className="mt-4 px-3 py-2 bg-red-900/20 border border-red-800/30 rounded-lg flex items-center gap-2">
-              <span className="text-red-400 text-sm">⚠️</span>
-              <p className="text-red-400 text-xs">
-                Focus area:{" "}
-                <span className="font-semibold">{weakArea.area}</span> is your
-                lowest at {weakArea.score}/10
-              </p>
-            </div>
-          </div>
-        </div>
+                    <YAxis
+                      domain={[0, 10]}
+                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Line
+                      type="monotone"
+                      dataKey="score"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={{ fill: "#3b82f6", r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
 
-        {/* Row 2 — Subject Radar + Activity Heatmap */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-white font-semibold">Subject Radar</h2>
-              <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
-                Demo data
-              </span>
+              {performanceBreakdown && (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                  <h2 className="text-white font-semibold mb-1">
+                    Performance Breakdown
+                  </h2>
+                  <p className="text-slate-500 text-xs mb-4">
+                    Average across all 3 evaluation areas
+                  </p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={performanceBreakdown} barSize={40}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis
+                        dataKey="area"
+                        tick={{ fill: "#64748b", fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        domain={[0, 10]}
+                        tick={{ fill: "#64748b", fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+                        {performanceBreakdown.map((entry, i) => (
+                          <Cell
+                            key={i}
+                            fill={
+                              entry.score >= 7
+                                ? "#22c55e"
+                                : entry.score >= 4
+                                  ? "#eab308"
+                                  : "#ef4444"
+                            }
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  {weakArea && (
+                    <div className="mt-4 px-3 py-2 bg-red-900/20 border border-red-800/30 rounded-lg flex items-center gap-2">
+                      <span className="text-red-400 text-sm">⚠️</span>
+                      <p className="text-red-400 text-xs">
+                        Focus area:{" "}
+                        <span className="font-semibold">{weakArea.area}</span>{" "}
+                        is your lowest at {weakArea.score}/10
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <p className="text-slate-500 text-xs mb-4">
-              How you perform across each technical subject
-            </p>
-            <ResponsiveContainer width="100%" height={260}>
-              <RadarChart data={dummySubjectScores} outerRadius={90}>
-                <PolarGrid stroke="#1e293b" />
-                <PolarAngleAxis
-                  dataKey="subject"
-                  tick={{ fill: "#94a3b8", fontSize: 12 }}
-                />
-                <PolarRadiusAxis
-                  angle={90}
-                  domain={[0, 10]}
-                  tick={{ fill: "#475569", fontSize: 10 }}
-                  tickCount={6}
-                />
-                <Radar
-                  name="Score"
-                  dataKey="score"
-                  stroke="#3b82f6"
-                  fill="#3b82f6"
-                  fillOpacity={0.2}
-                  dot={{ fill: "#3b82f6", r: 4 }}
-                />
-                <Tooltip
-                  content={({ active, payload }) =>
-                    active && payload?.length ? (
-                      <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
-                        <p className="text-slate-400 text-xs">
-                          {payload[0].payload.subject}
-                        </p>
-                        <p className="text-white text-sm font-semibold">
-                          {payload[0].value}/10
-                        </p>
-                      </div>
-                    ) : null
-                  }
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-white font-semibold">Practice Activity</h2>
-              <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
-                Demo data
-              </span>
+            {/* Row 2 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {subjectRadar && subjectRadar.length >= 3 ? (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                  <h2 className="text-white font-semibold mb-1">
+                    Subject Radar
+                  </h2>
+                  <p className="text-slate-500 text-xs mb-4">
+                    Your average score per technical subject
+                  </p>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <RadarChart data={subjectRadar} outerRadius={90}>
+                      <PolarGrid stroke="#1e293b" />
+                      <PolarAngleAxis
+                        dataKey="subject"
+                        tick={{ fill: "#94a3b8", fontSize: 12 }}
+                      />
+                      <PolarRadiusAxis
+                        angle={90}
+                        domain={[0, 10]}
+                        tick={{ fill: "#475569", fontSize: 10 }}
+                        tickCount={6}
+                      />
+                      <Radar
+                        name="Score"
+                        dataKey="score"
+                        stroke="#3b82f6"
+                        fill="#3b82f6"
+                        fillOpacity={0.2}
+                        dot={{ fill: "#3b82f6", r: 4 }}
+                      />
+                      <Tooltip
+                        content={({ active, payload }) =>
+                          active && payload?.length ? (
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+                              <p className="text-slate-400 text-xs">
+                                {payload[0].payload.subject}
+                              </p>
+                              <p className="text-white text-sm font-semibold">
+                                {payload[0].value}/10
+                              </p>
+                            </div>
+                          ) : null
+                        }
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center text-center">
+                  <div className="text-3xl mb-2">🕸️</div>
+                  <p className="text-slate-400 text-sm font-medium">
+                    Subject Radar
+                  </p>
+                  <p className="text-slate-600 text-xs mt-1">
+                    Complete technical sessions in 3+ subjects to see this chart
+                  </p>
+                </div>
+              )}
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h2 className="text-white font-semibold mb-1">
+                  Practice Activity
+                </h2>
+                <p className="text-slate-500 text-xs mb-6">
+                  Your session consistency over the last 16 weeks
+                </p>
+                <ActivityHeatmap data={heatmapData} />
+              </div>
             </div>
-            <p className="text-slate-500 text-xs mb-6">
-              Your session consistency over the last 16 weeks
-            </p>
-            <ActivityHeatmap data={heatmapData} />
-          </div>
-        </div>
+          </>
+        )}
 
         {/* Session History */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl">
@@ -546,7 +794,9 @@ function Dashboard() {
           {sessions.length === 0 ? (
             <EmptyHistory />
           ) : (
-            sessions.map((s) => <SessionRow key={s.id} session={s} />)
+            sessions.map((s) => (
+              <SessionRow key={s.id} session={s} onClick={setSelectedSession} />
+            ))
           )}
         </div>
       </div>
