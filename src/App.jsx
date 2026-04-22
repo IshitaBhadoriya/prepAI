@@ -5,6 +5,9 @@ import InterviewSetup from "./pages/InterviewSetup";
 import InterviewSession from "./pages/InterviewSession";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import InterviewFeedback from "./pages/InterviewFeedback";
+import Questions from "./pages/Questions";
+import Profile from "./pages/Profile";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
@@ -43,6 +46,23 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/questions"
+        element={
+          <ProtectedRoute>
+            <Questions />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

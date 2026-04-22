@@ -3,26 +3,25 @@ import { useState, useEffect, useRef } from "react";
 export function useSpeechRecognition() {
   const [transcript, setTranscript] = useState("");
   const [isListening, setIsListening] = useState(false);
-  const [isSupported, setIsSupported] = useState(false);
+  const [isSupported] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      Boolean(window.SpeechRecognition || window.webkitSpeechRecognition),
+  );
   const recognitionRef = useRef(null);
 
   useEffect(() => {
-    // Check if the browser supports Speech Recognition
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setIsSupported(false);
       return;
     }
-    setIsSupported(true);
 
-    // Create the recognition instance
     const recognition = new SpeechRecognition();
-    recognition.continuous = true; // Keep listening until we stop it
-    recognition.interimResults = true; // Show partial results as user speaks
-    recognition.lang = "en-IN"; // Indian English
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-IN";
 
-    // Called every time speech is detected
     recognition.onresult = (event) => {
       let fullTranscript = "";
       for (let i = 0; i < event.results.length; i++) {

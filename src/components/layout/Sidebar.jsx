@@ -22,7 +22,7 @@ function Sidebar() {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-slate-800">
         <span className="text-white text-xl font-bold">
-          Prep<span className="text-blue-400">AI</span>
+          Prep<span className="text-blue-400">Forge</span>
         </span>
       </div>
 
@@ -40,7 +40,11 @@ function Sidebar() {
               }`
             }
           >
-            <span className="text-base">{item.icon}</span>
+            <span className="w-6 text-xs font-bold text-slate-500">
+              {item.label === "Question Bank"
+                ? "QB"
+                : item.label.slice(0, 2).toUpperCase()}
+            </span>
             {item.label}
           </NavLink>
         ))}
@@ -50,7 +54,7 @@ function Sidebar() {
       <div className="px-3 py-4 border-t border-slate-800">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors w-full"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors w-full [&>span:first-child]:hidden"
         >
           <span>🚪</span>
           Logout

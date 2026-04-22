@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { generateQuestions, generateFollowUp } from "../lib/api";
@@ -21,6 +21,22 @@ function formatLabel(value) {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function getQuestionTimeLimit(difficulty, isFollowup) {
+  const baseSeconds = {
+    easy: 180,
+    medium: 150,
+    hard: 120,
+  }[difficulty] || 150;
+
+  return isFollowup ? Math.max(60, Math.round(baseSeconds * 0.6)) : baseSeconds;
+}
+
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
 }
 
 function InterviewSession() {
@@ -76,7 +92,16 @@ function InterviewSession() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const hasLoaded = useRef(false);
+  const latestAnswerRef = useRef("");
+  const autoSubmittedRef = useRef(false);
+  const [timeLimit, setTimeLimit] = useState(() =>
+    getQuestionTimeLimit(difficulty, false),
+  );
+  const [timeLeft, setTimeLeft] = useState(() =>
+    getQuestionTimeLimit(difficulty, false),
+  );
 
   // Speech recognition
   const {
@@ -104,6 +129,8 @@ function InterviewSession() {
       try {
         setLoading(true);
         setError("");
+        setQuestions([]);
+        setCurrentQuestion("");
 
         console.log("Step 1 — calling generateQuestions...");
         const qs = await generateQuestions(
@@ -123,7 +150,15 @@ function InterviewSession() {
         setLoading(false);
       } catch (err) {
         console.error("LOAD ERROR:", err);
-        setError("Failed to load questions. Please go back and try again.");
+        const message = err?.message || "";
+        setQuestions([]);
+        setCurrentQuestion("");
+        setError(
+          message.includes("GROQ_API_KEY") ||
+            message.includes("AI service is not configured")
+            ? "AI setup is missing. Add GROQ_API_KEY to the server environment, restart the dev server, and try again."
+            : "Failed to load questions. Please check your connection and try again.",
+        );
         setLoading(false);
       }
     }
@@ -136,25 +171,47 @@ function InterviewSession() {
     questionRange,
     role,
     technicalSubjects,
+    loadAttempt,
   ]);
+
+  function retryLoadingQuestions() {
+    hasLoaded.current = false;
+    setLoadAttempt((current) => current + 1);
+  }
 
   // Sync speech transcript to text answer
   useEffect(() => {
     if (transcript) setTextAnswer(transcript);
   }, [transcript]);
 
+  useEffect(() => {
+    latestAnswerRef.current = textAnswer;
+  }, [textAnswer]);
+
+  useEffect(() => {
+    if (!currentQuestion) return;
+    const nextLimit = getQuestionTimeLimit(difficulty, isFollowup);
+    setTimeLimit(nextLimit);
+    setTimeLeft(nextLimit);
+    autoSubmittedRef.current = false;
+  }, [currentQuestion, difficulty, isFollowup]);
+
   // Progress calculation
   const totalQuestions = questions.length;
   const progress =
     totalQuestions > 0 ? (currentIndex / totalQuestions) * 100 : 0;
 
-  async function handleNext() {
-    const answer = textAnswer.trim();
+  const handleNext = useCallback(async ({ autoSubmit = false } = {}) => {
+    const answer = (autoSubmit ? latestAnswerRef.current : textAnswer).trim();
     const allowFollowUp = mode !== "communication";
 
-    if (!answer) {
+    if (!answer && !autoSubmit) {
       setError("Please provide an answer before continuing.");
       return;
+    }
+
+    if (autoSubmit) {
+      autoSubmittedRef.current = true;
     }
 
     if (isListening) stopListening();
@@ -162,21 +219,22 @@ function InterviewSession() {
     setSubmitting(true);
     setError("");
 
+    const finalAnswer = answer || "[No answer submitted before time ended.]";
     const newAnswers = [
       ...answers,
       {
         question: currentQuestion,
-        answer,
+        answer: finalAnswer,
         isFollowup,
+        timedOut: autoSubmit && !answer,
       },
     ];
 
     try {
-      // 🧠 STEP 1: Decide if follow-up should happen
-      if (allowFollowUp && !isFollowup && followUpCount < 1) {
+      if (allowFollowUp && answer && !isFollowup && followUpCount < 1) {
         const followUp = await generateFollowUp(
           currentQuestion,
-          answer,
+          finalAnswer,
           role,
           mode,
           technicalSubjects,
@@ -233,7 +291,43 @@ function InterviewSession() {
     } finally {
       setSubmitting(false);
     }
-  }
+  }, [
+    answers,
+    communicationMode,
+    currentIndex,
+    currentQuestion,
+    difficulty,
+    followUpCount,
+    isFollowup,
+    isListening,
+    mode,
+    navigate,
+    questions,
+    resetTranscript,
+    role,
+    stopListening,
+    subject,
+    technicalSubjects,
+    textAnswer,
+    user?.id,
+  ]);
+
+  useEffect(() => {
+    if (loading || submitting || !currentQuestion) return undefined;
+
+    if (timeLeft <= 0) {
+      if (!autoSubmittedRef.current) {
+        void handleNext({ autoSubmit: true });
+      }
+      return undefined;
+    }
+
+    const timerId = window.setTimeout(() => {
+      setTimeLeft((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timerId);
+  }, [currentQuestion, handleNext, loading, submitting, timeLeft]);
 
   // Loading screen
   if (loading) {
@@ -248,6 +342,38 @@ function InterviewSession() {
             <p className="text-slate-400 text-sm mt-1">
               Preparing a personalised interview for you
             </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error && questions.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-screen items-center justify-center px-6">
+          <div className="w-full max-w-lg rounded-lg border border-red-900/50 bg-slate-900 p-6">
+            <p className="text-xs font-semibold uppercase tracking-wider text-red-400">
+              Interview could not start
+            </p>
+            <h1 className="mt-2 text-2xl font-bold text-white">
+              Questions did not load.
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-slate-300">{error}</p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={retryLoadingQuestions}
+                className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => navigate("/interview/setup")}
+                className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700"
+              >
+                Back to setup
+              </button>
+            </div>
           </div>
         </div>
       </DashboardLayout>
@@ -271,6 +397,39 @@ function InterviewSession() {
               <span className="ml-2 text-yellow-400 text-xs">(follow-up)</span>
             )}
           </span>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-300">
+              Time remaining
+            </span>
+            <span
+              className={`text-sm font-bold ${
+                timeLeft <= 20 ? "text-red-400" : "text-white"
+              }`}
+              aria-live="polite"
+            >
+              {formatTime(timeLeft)}
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-slate-800">
+            <div
+              className={`h-2 rounded-full transition-all duration-500 ${
+                timeLeft <= 20
+                  ? "bg-red-500"
+                  : timeLeft <= 45
+                    ? "bg-yellow-500"
+                    : "bg-blue-500"
+              }`}
+              style={{
+                width: `${timeLimit > 0 ? (timeLeft / timeLimit) * 100 : 0}%`,
+              }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            The answer will auto-submit when the timer reaches zero.
+          </p>
         </div>
 
         {/* Progress Bar */}
@@ -331,7 +490,7 @@ function InterviewSession() {
 
         {/* Next Button */}
         <button
-          onClick={handleNext}
+          onClick={() => handleNext()}
           disabled={submitting || !textAnswer.trim()}
           className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all ${
             submitting || !textAnswer.trim()

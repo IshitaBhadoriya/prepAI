@@ -1,9 +1,6 @@
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 function Landing() {
-  const navigate = useNavigate();
-
   async function handleGoogleLogin() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -21,7 +18,7 @@ function Landing() {
       {/* Navbar */}
       <nav className="flex items-center justify-between px-8 py-5">
         <span className="text-white text-2xl font-bold tracking-tight">
-          Prep<span className="text-blue-400">AI</span>
+          Prep<span className="text-blue-400">Forge</span>
         </span>
         <button
           onClick={handleGoogleLogin}
@@ -34,7 +31,7 @@ function Landing() {
       {/* Hero */}
       <div className="flex flex-col items-center justify-center text-center px-6 pt-24 pb-16">
         <div className="inline-block bg-blue-900/40 border border-blue-700/50 text-blue-300 text-sm px-4 py-1.5 rounded-full mb-6">
-          AI-Powered Interview Practice
+          AI-powered interview practice
         </div>
         <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight max-w-3xl">
           Practice interviews like a{" "}
@@ -102,7 +99,7 @@ function Landing() {
 
       {/* Footer */}
       <div className="text-center text-slate-600 text-sm py-8">
-        Built with React · Supabase · Google Gemini
+        Built with React, Supabase, and server-side AI feedback
       </div>
     </div>
   );

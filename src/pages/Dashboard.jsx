@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { getUserSessions, getUserStats, getStreak } from "../lib/database";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import {
@@ -247,6 +247,26 @@ function CustomTooltip({ active, payload, label }) {
   return null;
 }
 
+function ScoreBar({ label, score }) {
+  const pct = (score / 10) * 100;
+  const color =
+    score >= 7 ? "bg-green-500" : score >= 4 ? "bg-yellow-500" : "bg-red-500";
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between mb-1">
+        <span className="text-slate-300 text-sm">{label}</span>
+        <span className="text-white text-sm font-semibold">{score}/10</span>
+      </div>
+      <div className="w-full h-2 bg-slate-800 rounded-full">
+        <div
+          className={`h-2 rounded-full transition-all duration-700 ${color}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function ActivityHeatmap({ data }) {
   const [tooltip, setTooltip] = useState(null);
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -316,26 +336,6 @@ function ActivityHeatmap({ data }) {
 function SessionFeedbackModal({ session, onClose }) {
   const f = session.feedback_json;
   if (!f) return null;
-
-  function ScoreBar({ label, score }) {
-    const pct = (score / 10) * 100;
-    const color =
-      score >= 7 ? "bg-green-500" : score >= 4 ? "bg-yellow-500" : "bg-red-500";
-    return (
-      <div className="mb-3">
-        <div className="flex justify-between mb-1">
-          <span className="text-slate-300 text-sm">{label}</span>
-          <span className="text-white text-sm font-semibold">{score}/10</span>
-        </div>
-        <div className="w-full h-2 bg-slate-800 rounded-full">
-          <div
-            className={`h-2 rounded-full transition-all duration-700 ${color}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
-    );
-  }
 
   const date = new Date(session.created_at).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -597,12 +597,12 @@ function Dashboard() {
           <p className="text-slate-400 text-sm mb-4">
             Choose your interview type and difficulty to begin.
           </p>
-          <a
-            href="/interview/setup"
+          <button
+            onClick={() => navigate("/interview/setup")}
             className="inline-block bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
           >
             Start Practicing
-          </a>
+          </button>
         </div>
 
         {/* Charts — show real data or empty state */}

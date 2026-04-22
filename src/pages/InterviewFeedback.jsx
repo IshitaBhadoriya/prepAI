@@ -8,6 +8,7 @@ import {
   updateStreak,
   saveSessionFeedback,
 } from "../lib/database";
+import { downloadFeedbackPdf } from "../lib/pdfReport";
 
 function formatLabel(value) {
   const labels = {
@@ -25,6 +26,26 @@ function formatLabel(value) {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function ScoreBar({ label, score }) {
+  const percentage = (score / 10) * 100;
+  const color =
+    score >= 7 ? "bg-green-500" : score >= 4 ? "bg-yellow-500" : "bg-red-500";
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between mb-1">
+        <span className="text-slate-300 text-sm">{label}</span>
+        <span className="text-white text-sm font-semibold">{score}/10</span>
+      </div>
+      <div className="w-full h-2 bg-slate-800 rounded-full">
+        <div
+          className={`h-2 rounded-full transition-all duration-700 ${color}`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function InterviewFeedback() {
@@ -145,32 +166,24 @@ function InterviewFeedback() {
     userId,
   ]);
 
-  function ScoreBar({ label, score }) {
-    const percentage = (score / 10) * 100;
-    const color =
-      score >= 7 ? "bg-green-500" : score >= 4 ? "bg-yellow-500" : "bg-red-500";
-    return (
-      <div className="mb-3">
-        <div className="flex justify-between mb-1">
-          <span className="text-slate-300 text-sm">{label}</span>
-          <span className="text-white text-sm font-semibold">{score}/10</span>
-        </div>
-        <div className="w-full h-2 bg-slate-800 rounded-full">
-          <div
-            className={`h-2 rounded-full transition-all duration-700 ${color}`}
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-      </div>
-    );
-  }
-
   const knowledgeLabel =
     mode === "technical"
       ? "Technical Knowledge"
       : mode === "hr"
         ? "HR Judgment"
         : "Content Quality";
+
+  function handleDownloadPdf() {
+    downloadFeedbackPdf({
+      feedback,
+      answers,
+      context: {
+        mode,
+        difficulty,
+        subjectSummary,
+      },
+    });
+  }
 
   if (loading) {
     return (
@@ -347,7 +360,13 @@ function InterviewFeedback() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button
+            onClick={handleDownloadPdf}
+            className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-white text-slate-950 transition-all hover:bg-slate-200"
+          >
+            Download PDF Report
+          </button>
           <button
             onClick={() => navigate("/interview/setup")}
             className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-500 text-white transition-all"

@@ -1,5 +1,4 @@
-const GROQ_KEY = import.meta.env.VITE_GROQ_KEY;
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+import { supabase } from "./supabase";
 
 const QUESTION_COUNT_BY_RANGE = {
   short: 4,
@@ -561,19 +560,25 @@ async function callGroq(
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      const res = await fetch(GROQ_URL, {
+      if (!session?.access_token) {
+        throw new Error("Please sign in again before using AI features.");
+      }
+
+      const res = await fetch("/api/ai", {
         method: "POST",
         signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${GROQ_KEY}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [{ role: "user", content: prompt }],
           temperature,
-          max_tokens: maxTokens,
+          maxTokens,
+          prompt,
         }),
       });
 
@@ -588,12 +593,14 @@ async function callGroq(
       }
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(`Groq error ${res.status}: ${JSON.stringify(err)}`);
+        const err = await res.json().catch(() => null);
+        throw new Error(
+          err?.error || `AI request failed with status ${res.status}.`,
+        );
       }
 
       const data = await res.json();
-      return data.choices?.[0]?.message?.content;
+      return data.content;
     } catch (err) {
       if (err.name === "AbortError") {
         console.log(`Groq timed out. Retrying ${i + 1}/${retries}...`);
