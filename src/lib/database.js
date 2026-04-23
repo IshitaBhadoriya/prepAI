@@ -32,6 +32,29 @@ function createUuid() {
 
 // ─── USERS ────────────────────────────────────────────────────────────────────
 
+function normalizeQuestionRows(questions) {
+  return (questions ?? [])
+    .map((question, index) => ({
+      question_text: String(question?.question_text || question || "").trim(),
+      sort_order: Number.isInteger(question?.sort_order)
+        ? question.sort_order
+        : index,
+    }))
+    .filter((question) => question.question_text);
+}
+
+function mapQuestionSet(set, questionsBySetId = new Map()) {
+  const relatedQuestions =
+    questionsBySetId.get(set.id) || normalizeQuestionRows(set.questions);
+
+  return {
+    ...set,
+    questions: [...relatedQuestions].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+    ),
+  };
+}
+
 // Save user to our users table after they log in
 // We use "upsert" — insert if not exists, update if already there
 // This is safe to call every time someone logs in
@@ -52,6 +75,225 @@ export async function saveUser(authUser) {
 }
 
 // ─── SESSIONS ─────────────────────────────────────────────────────────────────
+
+export async function getQuestionSets(userId) {
+  if (!userId) {
+    console.error("getQuestionSets called without a userId");
+    return [];
+  }
+
+  try {
+    const { data: sets, error: setsError } = await withTimeout(
+      supabase
+        .from("question_sets")
+        .select("id, user_id, name, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
+      SUPABASE_OP_TIMEOUT_MS,
+      "question sets select",
+    );
+
+    if (setsError) {
+      console.error("Error fetching question sets:", setsError.message);
+      throw new Error(setsError.message);
+    }
+
+    if (!sets || sets.length === 0) {
+      return [];
+    }
+
+    const { data: questions, error: questionsError } = await withTimeout(
+      supabase
+        .from("question_bank_items")
+        .select("id, set_id, question_text, sort_order")
+        .in(
+          "set_id",
+          sets.map((set) => set.id),
+        )
+        .order("sort_order", { ascending: true }),
+      SUPABASE_OP_TIMEOUT_MS,
+      "question bank items select",
+    );
+
+    if (questionsError) {
+      console.error("Error fetching question bank items:", questionsError.message);
+      throw new Error(questionsError.message);
+    }
+
+    const questionsBySetId = new Map();
+    for (const question of questions ?? []) {
+      const list = questionsBySetId.get(question.set_id) || [];
+      list.push(question);
+      questionsBySetId.set(question.set_id, list);
+    }
+
+    return sets.map((set) => mapQuestionSet(set, questionsBySetId));
+  } catch (err) {
+    console.error("Error fetching question sets:", err.message);
+    throw err;
+  }
+}
+
+export async function getQuestionSetWithQuestions(userId, setId) {
+  if (!userId || !setId) {
+    console.error("getQuestionSetWithQuestions called without required ids");
+    return null;
+  }
+
+  try {
+    const { data: set, error: setError } = await withTimeout(
+      supabase
+        .from("question_sets")
+        .select("id, user_id, name, created_at")
+        .eq("id", setId)
+        .eq("user_id", userId)
+        .maybeSingle(),
+      SUPABASE_OP_TIMEOUT_MS,
+      "question set select",
+    );
+
+    if (setError || !set) {
+      if (setError) console.error("Error fetching set:", setError.message);
+      return null;
+    }
+
+    const { data: questions, error: questionsError } = await withTimeout(
+      supabase
+        .from("question_bank_items")
+        .select("id, set_id, question_text, sort_order")
+        .eq("set_id", setId)
+        .order("sort_order", { ascending: true }),
+      SUPABASE_OP_TIMEOUT_MS,
+      "question set bank items select",
+    );
+
+    if (questionsError) {
+      console.error("Error fetching set questions:", questionsError.message);
+      return mapQuestionSet(set);
+    }
+
+    return mapQuestionSet(set, new Map([[set.id, questions ?? []]]));
+  } catch (err) {
+    console.error("Error fetching question set:", err.message);
+    return null;
+  }
+}
+
+export async function createQuestionSet(userId, name, questions) {
+  if (!userId) throw new Error("You must be signed in to save questions.");
+
+  const cleanedQuestions = normalizeQuestionRows(questions);
+  if (!name?.trim()) throw new Error("Question set name is required.");
+  if (cleanedQuestions.length === 0) {
+    throw new Error("Add at least one question.");
+  }
+
+  const setId = createUuid();
+  const { data: set, error: setError } = await withTimeout(
+    supabase
+      .from("question_sets")
+      .insert({
+        id: setId,
+        user_id: userId,
+        name: name.trim(),
+      })
+      .select("id, user_id, name, created_at")
+      .single(),
+    SUPABASE_OP_TIMEOUT_MS,
+    "question set insert",
+  );
+
+  if (setError) throw new Error(setError.message);
+
+  const questionRows = cleanedQuestions.map((question, index) => ({
+    id: createUuid(),
+    set_id: setId,
+    question_text: question.question_text,
+    sort_order: index,
+  }));
+
+  const { error: questionsError } = await withTimeout(
+    supabase.from("question_bank_items").insert(questionRows),
+    SUPABASE_OP_TIMEOUT_MS,
+    "question bank items insert",
+  );
+
+  if (questionsError) {
+    await supabase.from("question_sets").delete().eq("id", setId);
+    throw new Error(questionsError.message);
+  }
+
+  return mapQuestionSet(set, new Map([[set.id, questionRows]]));
+}
+
+export async function updateQuestionSet(userId, setId, name, questions) {
+  if (!userId || !setId) {
+    throw new Error("Question set could not be updated.");
+  }
+
+  const cleanedQuestions = normalizeQuestionRows(questions);
+  if (!name?.trim()) throw new Error("Question set name is required.");
+  if (cleanedQuestions.length === 0) {
+    throw new Error("Add at least one question.");
+  }
+
+  const { data: set, error: setError } = await withTimeout(
+    supabase
+      .from("question_sets")
+      .update({ name: name.trim() })
+      .eq("id", setId)
+      .eq("user_id", userId)
+      .select("id, user_id, name, created_at")
+      .single(),
+    SUPABASE_OP_TIMEOUT_MS,
+    "question set update",
+  );
+
+  if (setError) throw new Error(setError.message);
+
+  const { error: deleteError } = await withTimeout(
+    supabase.from("question_bank_items").delete().eq("set_id", setId),
+    SUPABASE_OP_TIMEOUT_MS,
+    "question bank items replace delete",
+  );
+
+  if (deleteError) throw new Error(deleteError.message);
+
+  const questionRows = cleanedQuestions.map((question, index) => ({
+    id: createUuid(),
+    set_id: setId,
+    question_text: question.question_text,
+    sort_order: index,
+  }));
+
+  const { error: insertError } = await withTimeout(
+    supabase.from("question_bank_items").insert(questionRows),
+    SUPABASE_OP_TIMEOUT_MS,
+    "question bank items replace insert",
+  );
+
+  if (insertError) throw new Error(insertError.message);
+
+  return mapQuestionSet(set, new Map([[set.id, questionRows]]));
+}
+
+export async function deleteQuestionSet(userId, setId) {
+  if (!userId || !setId) {
+    throw new Error("Question set could not be deleted.");
+  }
+
+  const { error } = await withTimeout(
+    supabase
+      .from("question_sets")
+      .delete()
+      .eq("id", setId)
+      .eq("user_id", userId),
+    SUPABASE_OP_TIMEOUT_MS,
+    "question set delete",
+  );
+
+  if (error) throw new Error(error.message);
+}
 
 // Get all sessions for the current user, most recent first
 export async function getUserSessions(userId) {

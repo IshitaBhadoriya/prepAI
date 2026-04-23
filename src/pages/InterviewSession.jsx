@@ -12,6 +12,7 @@ function formatLabel(value) {
     dbms: "DBMS",
     os: "Operating Systems",
     cn: "Computer Networks",
+    custom: "Custom Questions",
   };
 
   if (!value) return "";
@@ -39,6 +40,32 @@ function formatTime(seconds) {
   return `${mins}:${String(secs).padStart(2, "0")}`;
 }
 
+function normalizeCustomQuestions(value) {
+  return Array.isArray(value)
+    ? value.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+}
+
+function shuffleQuestions(items) {
+  const shuffled = [...items];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex],
+      shuffled[index],
+    ];
+  }
+
+  return shuffled;
+}
+
+function clampQuestionCount(value, total) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return total;
+  return Math.max(1, Math.min(total, Math.floor(numericValue)));
+}
+
 function InterviewSession() {
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -52,7 +79,17 @@ function InterviewSession() {
     difficulty,
     role,
     questionRange,
+    customQuestionCount,
+    customQuestions,
+    customQuestionSetId,
+    customQuestionSetName,
   } = state || {};
+  const customQuestionList = useMemo(
+    () => normalizeCustomQuestions(customQuestions),
+    [customQuestions],
+  );
+  const isCustomMode = mode === "custom" && customQuestionList.length > 0;
+  const sessionDifficulty = difficulty || "medium";
   const technicalSubjects = useMemo(() => {
     if (Array.isArray(selectedSubjects) && selectedSubjects.length > 0) {
       return selectedSubjects;
@@ -70,6 +107,10 @@ function InterviewSession() {
     [technicalSubjects],
   );
   const sessionContextLabel = useMemo(() => {
+    if (mode === "custom") {
+      return customQuestionSetName || subject || "Custom Questions";
+    }
+
     if (mode === "technical") {
       return subjectSummary;
     }
@@ -79,7 +120,7 @@ function InterviewSession() {
     }
 
     return "";
-  }, [communicationMode, mode, subjectSummary]);
+  }, [communicationMode, customQuestionSetName, mode, subject, subjectSummary]);
 
   // Session state
   const [questions, setQuestions] = useState([]);
@@ -97,10 +138,10 @@ function InterviewSession() {
   const latestAnswerRef = useRef("");
   const autoSubmittedRef = useRef(false);
   const [timeLimit, setTimeLimit] = useState(() =>
-    getQuestionTimeLimit(difficulty, false),
+    getQuestionTimeLimit(sessionDifficulty, false),
   );
   const [timeLeft, setTimeLeft] = useState(() =>
-    getQuestionTimeLimit(difficulty, false),
+    getQuestionTimeLimit(sessionDifficulty, false),
   );
 
   // Speech recognition
@@ -117,7 +158,8 @@ function InterviewSession() {
   useEffect(() => {
     if (
       !mode ||
-      !difficulty ||
+      (!sessionDifficulty && !isCustomMode) ||
+      (mode === "custom" && customQuestionList.length === 0) ||
       (mode === "technical" && technicalSubjects.length === 0)
     ) {
       navigate("/interview/setup");
@@ -132,11 +174,27 @@ function InterviewSession() {
         setQuestions([]);
         setCurrentQuestion("");
 
+        if (isCustomMode) {
+          const requestedCount = clampQuestionCount(
+            customQuestionCount,
+            customQuestionList.length,
+          );
+          const shuffledQuestions = shuffleQuestions(customQuestionList).slice(
+            0,
+            requestedCount,
+          );
+          setQuestions(shuffledQuestions);
+          setCurrentQuestion(shuffledQuestions[0]);
+          setError("");
+          setLoading(false);
+          return;
+        }
+
         console.log("Step 1 — calling generateQuestions...");
         const qs = await generateQuestions(
           mode,
           technicalSubjects,
-          difficulty,
+          sessionDifficulty,
           role,
           questionRange,
           communicationMode,
@@ -165,11 +223,14 @@ function InterviewSession() {
     loadQuestions();
   }, [
     communicationMode,
-    difficulty,
+    customQuestionCount,
+    customQuestionList,
+    isCustomMode,
     mode,
     navigate,
     questionRange,
     role,
+    sessionDifficulty,
     technicalSubjects,
     loadAttempt,
   ]);
@@ -190,16 +251,78 @@ function InterviewSession() {
 
   useEffect(() => {
     if (!currentQuestion) return;
-    const nextLimit = getQuestionTimeLimit(difficulty, isFollowup);
+    const nextLimit = getQuestionTimeLimit(sessionDifficulty, isFollowup);
     setTimeLimit(nextLimit);
     setTimeLeft(nextLimit);
     autoSubmittedRef.current = false;
-  }, [currentQuestion, difficulty, isFollowup]);
+  }, [currentQuestion, sessionDifficulty, isFollowup]);
 
   // Progress calculation
   const totalQuestions = questions.length;
   const progress =
     totalQuestions > 0 ? (currentIndex / totalQuestions) * 100 : 0;
+  const isLastQuestion = currentIndex + 1 >= totalQuestions;
+  const canGenerateFollowUp =
+    mode !== "communication" && !isFollowup && followUpCount < 1;
+  const primaryActionLabel = submitting
+    ? canGenerateFollowUp
+      ? "Checking follow-up..."
+      : "Submitting..."
+    : canGenerateFollowUp
+      ? "Submit Answer"
+      : isLastQuestion
+        ? "Finish & Get Feedback"
+        : "Next Question";
+
+  const moveToNextMainQuestion = useCallback(
+    (nextAnswers) => {
+      const nextIndex = currentIndex + 1;
+
+      if (nextIndex >= questions.length) {
+        navigate("/interview/feedback", {
+          state: {
+            answers: nextAnswers,
+            mode,
+            subject:
+              technicalSubjects.length > 0
+                ? technicalSubjects.join(", ")
+                : subject || null,
+            selectedSubjects: technicalSubjects,
+            communicationMode,
+            customQuestionSetId,
+            customQuestionSetName,
+            difficulty: sessionDifficulty,
+            role,
+            userId: user?.id,
+          },
+        });
+        return;
+      }
+
+      setAnswers(nextAnswers);
+      setCurrentIndex(nextIndex);
+      setCurrentQuestion(questions[nextIndex]);
+      setIsFollowup(false);
+      setFollowUpCount(0);
+      setTextAnswer("");
+      resetTranscript();
+    },
+    [
+      communicationMode,
+      currentIndex,
+      customQuestionSetId,
+      customQuestionSetName,
+      mode,
+      navigate,
+      questions,
+      resetTranscript,
+      role,
+      sessionDifficulty,
+      subject,
+      technicalSubjects,
+      user?.id,
+    ],
+  );
 
   const handleNext = useCallback(async ({ autoSubmit = false } = {}) => {
     const answer = (autoSubmit ? latestAnswerRef.current : textAnswer).trim();
@@ -232,12 +355,16 @@ function InterviewSession() {
 
     try {
       if (allowFollowUp && answer && !isFollowup && followUpCount < 1) {
+        const followUpSubject =
+          mode === "custom"
+            ? customQuestionSetName || subject || "custom question bank"
+            : technicalSubjects;
         const followUp = await generateFollowUp(
           currentQuestion,
           finalAnswer,
           role,
           mode,
-          technicalSubjects,
+          followUpSubject,
           communicationMode,
         );
 
@@ -254,37 +381,7 @@ function InterviewSession() {
       }
 
       // 🧠 STEP 2: Move to next main question
-      const nextIndex = currentIndex + 1;
-
-      if (nextIndex >= questions.length) {
-        navigate("/interview/feedback", {
-          state: {
-            answers: newAnswers,
-            mode,
-            subject:
-              technicalSubjects.length > 0
-                ? technicalSubjects.join(", ")
-                : subject || null,
-            selectedSubjects: technicalSubjects,
-            communicationMode,
-            difficulty,
-            role,
-            userId: user?.id,
-          },
-        });
-        return;
-      }
-
-      setAnswers(newAnswers);
-      setCurrentIndex(nextIndex);
-      setCurrentQuestion(questions[nextIndex]);
-
-      // Reset follow-up state
-      setIsFollowup(false);
-      setFollowUpCount(0);
-
-      setTextAnswer("");
-      resetTranscript();
+      moveToNextMainQuestion(newAnswers);
     } catch (err) {
       console.error("Follow-up error:", err);
       setError("Something went wrong. Try again.");
@@ -294,22 +391,46 @@ function InterviewSession() {
   }, [
     answers,
     communicationMode,
-    currentIndex,
     currentQuestion,
-    difficulty,
+    customQuestionSetName,
     followUpCount,
     isFollowup,
     isListening,
     mode,
-    navigate,
-    questions,
+    moveToNextMainQuestion,
     resetTranscript,
     role,
     stopListening,
     subject,
     technicalSubjects,
     textAnswer,
-    user?.id,
+  ]);
+
+  const handleSkip = useCallback(() => {
+    if (submitting) return;
+
+    if (isListening) stopListening();
+
+    const skippedAnswers = [
+      ...answers,
+      {
+        question: currentQuestion,
+        answer: "[Question skipped. No answer submitted.]",
+        isFollowup,
+        skipped: true,
+      },
+    ];
+
+    setError("");
+    moveToNextMainQuestion(skippedAnswers);
+  }, [
+    answers,
+    currentQuestion,
+    isFollowup,
+    isListening,
+    moveToNextMainQuestion,
+    stopListening,
+    submitting,
   ]);
 
   useEffect(() => {
@@ -387,8 +508,9 @@ function InterviewSession() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <p className="text-slate-400 text-sm capitalize">
-              {mode} · {difficulty}
-              {sessionContextLabel ? ` · ${sessionContextLabel}` : ""}
+              {formatLabel(mode)}
+              {mode !== "custom" ? ` / ${formatLabel(sessionDifficulty)}` : ""}
+              {sessionContextLabel ? ` / ${sessionContextLabel}` : ""}
             </p>
           </div>
           <span className="text-slate-400 text-sm">
@@ -498,11 +620,19 @@ function InterviewSession() {
               : "bg-blue-600 hover:bg-blue-500 text-white"
           }`}
         >
-          {submitting
-            ? "Thinking..."
-            : currentIndex + 1 === totalQuestions && !isFollowup
-              ? "Finish & Get Feedback →"
-              : "Next Question →"}
+          {primaryActionLabel}
+        </button>
+        <button
+          type="button"
+          onClick={handleSkip}
+          disabled={submitting}
+          className={`mt-3 w-full rounded-xl border py-3.5 text-sm font-semibold transition-all ${
+            submitting
+              ? "cursor-not-allowed border-slate-800 bg-slate-900 text-slate-600"
+              : "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+          }`}
+        >
+          Skip
         </button>
       </div>
     </DashboardLayout>

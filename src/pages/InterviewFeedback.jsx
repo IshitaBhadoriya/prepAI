@@ -17,6 +17,7 @@ function formatLabel(value) {
     dbms: "DBMS",
     os: "Operating Systems",
     cn: "Computer Networks",
+    custom: "Custom Questions",
   };
 
   if (!value) return "";
@@ -171,6 +172,8 @@ function InterviewFeedback() {
       ? "Technical Knowledge"
       : mode === "hr"
         ? "HR Judgment"
+        : mode === "custom"
+          ? "Answer Quality"
         : "Content Quality";
 
   function handleDownloadPdf() {
@@ -227,9 +230,12 @@ function InterviewFeedback() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white">Interview Feedback</h1>
           <p className="text-slate-400 text-sm mt-1 capitalize">
-            {mode} · {difficulty}
-            {subjectSummary ? ` · ${subjectSummary}` : ""}
-            {saved && <span className="ml-2 text-green-400">· Saved ✓</span>}
+            {formatLabel(mode)}
+            {mode !== "custom" && difficulty
+              ? ` / ${formatLabel(difficulty)}`
+              : ""}
+            {subjectSummary ? ` / ${subjectSummary}` : ""}
+            {saved && <span className="ml-2 text-green-400">/ Saved</span>}
           </p>
         </div>
 

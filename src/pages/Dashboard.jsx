@@ -170,6 +170,7 @@ function SessionRow({ session, onClick }) {
     hr: "HR Round",
     communication: "Communication",
     technical: "Technical",
+    custom: "Custom Questions",
   };
   const avgScore = [
     session.tech_score,

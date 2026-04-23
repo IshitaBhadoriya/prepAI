@@ -63,6 +63,26 @@ const MODE_CONFIG = {
     scoringFocus:
       "Judge the candidate on clarity, structure, fluency, depth, relevance, confidence, audience awareness, and completeness.",
   },
+  custom: {
+    interviewer: "senior interview coach",
+    focus: (subjectInput) =>
+      `user-provided custom interview questions from ${formatSubjectList(
+        subjectInput,
+        "a custom question bank",
+      )}`,
+    interviewerIntent:
+      "use the user's saved question bank as the primary interview source while probing the candidate's reasoning, specificity, and communication quality",
+    questionMix: [
+      "user-provided prompts",
+      "answer-specific probing",
+      "depth checks",
+      "realistic interview judgement",
+    ],
+    followUpFocus:
+      "Ask a sharp follow-up grounded in the custom question and the candidate's answer, probing the biggest gap, assumption, missing example, or weak reasoning.",
+    scoringFocus:
+      "Judge the candidate on answer quality, reasoning depth, relevance to the custom prompt, communication, and completeness.",
+  },
   technical: {
     interviewer: "senior technical interviewer",
     focus: (subjectInput) =>
@@ -174,6 +194,7 @@ function humanizeId(value, fallback = "General") {
     os: "Operating Systems",
     cn: "Computer Networks",
     general: "General Mix",
+    custom: "Custom Questions",
   };
 
   if (specialLabels[value]) {
@@ -787,6 +808,8 @@ export async function generateFollowUp(
   const subjectLabel =
     mode === "technical"
       ? formatSubjectList(subjectInput, "General Computer Science")
+      : mode === "custom"
+        ? formatSubjectList(subjectInput, "Custom Question Bank")
       : "General";
   const communicationModeLabel =
     mode === "communication"
@@ -841,6 +864,8 @@ export async function generateFeedback(sessionData, context = {}) {
   const subjectLabel =
     mode === "technical"
       ? formatSubjectList(subject, "General Computer Science")
+      : mode === "custom"
+        ? formatSubjectList(subject, "Custom Question Bank")
       : "General";
   const communicationModeLabel =
     mode === "communication"
@@ -851,11 +876,32 @@ export async function generateFeedback(sessionData, context = {}) {
     const evaluations = [];
 
     for (const item of sessionData) {
-      const evaluation = await evaluateCommunicationAnswer(
-        item.question,
-        item.answer,
-        communicationMode,
-      );
+      const evaluation = item?.skipped
+        ? normalizeCommunicationEvaluation({
+            scores: {
+              clarity: 0,
+              structure: 0,
+              fluency: 0,
+              depth: 0,
+              relevance: 0,
+            },
+            summary: "The question was skipped, so there was no answer to evaluate.",
+            whatWentWell: [
+              "No strengths to highlight because the question was skipped.",
+            ],
+            issues: [
+              "The answer was skipped.",
+              "No structure, depth, or relevance could be assessed.",
+              "A complete response is required for interview evaluation.",
+            ],
+            improvedAnswer:
+              "This question needs a complete spoken answer before it can be improved.",
+          })
+        : await evaluateCommunicationAnswer(
+            item.question,
+            item.answer,
+            communicationMode,
+          );
       evaluations.push(evaluation);
     }
 
@@ -1039,6 +1085,7 @@ Evaluation Rules:
 - Be strict and objective
 - Do NOT give generic praise
 - Penalize incomplete or vague answers
+- If an answer says "[Question skipped. No answer submitted.]", treat it as skipped and score that per-question item as 0 across all scoring fields.
 - Reward clarity, correctness, and depth
 - Evaluate based on role expectations (${roleLabel})
 - Keep the evaluation aligned with the selected interview type
