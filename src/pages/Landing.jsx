@@ -71,14 +71,14 @@ function Landing() {
             desc: "Technical score, communication score, and completeness — with exactly what you missed.",
           },
           {
-            icon: "💻",
-            title: "Code Editor for DSA",
-            desc: "Write actual code for DSA questions. AI reviews your logic and time complexity.",
+            icon: "📋",
+            title: "Bring Your Own Questions",
+            desc: "Paste real questions from Glassdoor or prep forums into a saved question bank, and run a full adaptive AI interview from them.",
           },
           {
-            icon: "📄",
-            title: "Resume-Based Questions",
-            desc: "Upload your resume and get questions tailored to your own projects and skills.",
+            icon: "⏱️",
+            title: "Real Interview Pressure",
+            desc: "A countdown timer per question, calibrated to difficulty, keeps every session honest — no unlimited time to think.",
           },
           {
             icon: "📈",
