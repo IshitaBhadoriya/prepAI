@@ -9,7 +9,7 @@ const navItems = [
   { icon: "👤", label: "Profile", path: "/profile" },
 ];
 
-function Sidebar() {
+function Sidebar({ open, onClose }) {
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -18,12 +18,23 @@ function Sidebar() {
   }
 
   return (
-    <aside className="w-64 min-h-screen bg-slate-900 border-r border-slate-800 flex flex-col">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 w-64 min-h-screen bg-slate-900 border-r border-slate-800 flex flex-col transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${
+        open ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-slate-800">
+      <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
         <span className="text-white text-xl font-bold">
           Prep<span className="text-blue-400">Forge</span>
         </span>
+        <button
+          onClick={onClose}
+          className="md:hidden text-slate-400 hover:text-white text-xl leading-none"
+          aria-label="Close menu"
+        >
+          ✕
+        </button>
       </div>
 
       {/* Nav Links */}
@@ -32,6 +43,7 @@ function Sidebar() {
           <NavLink
             key={item.path}
             to={item.path}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
