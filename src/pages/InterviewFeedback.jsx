@@ -99,6 +99,39 @@ function InterviewFeedback() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const isSavingRef = useRef(false);
+
+  async function saveResults(result) {
+    if (isSavingRef.current || saved) return;
+    isSavingRef.current = true;
+    setSaving(true);
+    try {
+      const session = await createSession(
+        userId,
+        mode,
+        storedSubject,
+        difficulty,
+      );
+      if (session?.id) {
+        await updateSessionScores(
+          session.id,
+          result.overallTechScore,
+          result.overallCommScore,
+          result.overallCompletenessScore,
+          null,
+        );
+        await saveSessionFeedback(session.id, result);
+        await updateStreak(userId);
+        setSaved(true);
+      }
+    } catch (err) {
+      console.error("Save failed:", err.message);
+    } finally {
+      isSavingRef.current = false;
+      setSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (!answers || answers.length === 0) {
@@ -107,31 +140,6 @@ function InterviewFeedback() {
     }
     if (hasFetched.current) return;
     hasFetched.current = true;
-
-    async function saveToSupabase(result) {
-      try {
-        const session = await createSession(
-          userId,
-          mode,
-          storedSubject,
-          difficulty,
-        );
-        if (session?.id) {
-          await updateSessionScores(
-            session.id,
-            result.overallTechScore,
-            result.overallCommScore,
-            result.overallCompletenessScore,
-            null,
-          );
-          await saveSessionFeedback(session.id, result);
-          await updateStreak(userId);
-          setSaved(true);
-        }
-      } catch (err) {
-        console.error("Background save failed:", err.message);
-      }
-    }
 
     async function loadFeedback() {
       try {
@@ -144,7 +152,7 @@ function InterviewFeedback() {
           role,
         });
         setFeedback(result);
-        void saveToSupabase(result);
+        void saveResults(result);
       } catch (err) {
         console.error("FEEDBACK ERROR:", err);
         setError("Failed to generate feedback. Please try again.");
@@ -174,7 +182,7 @@ function InterviewFeedback() {
         ? "HR Judgment"
         : mode === "custom"
           ? "Answer Quality"
-        : "Content Quality";
+          : "Content Quality";
 
   function handleDownloadPdf() {
     downloadFeedbackPdf({
@@ -381,29 +389,11 @@ function InterviewFeedback() {
           </button>
           {!saved && (
             <button
-              onClick={async () => {
-                const session = await createSession(
-                  userId,
-                  mode,
-                  storedSubject,
-                  difficulty,
-                );
-                if (session?.id) {
-                  await updateSessionScores(
-                    session.id,
-                    feedback.overallTechScore,
-                    feedback.overallCommScore,
-                    feedback.overallCompletenessScore,
-                    null,
-                  );
-                  await saveSessionFeedback(session.id, feedback);
-                  await updateStreak(userId);
-                  setSaved(true);
-                }
-              }}
-              className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-green-700 hover:bg-green-600 text-white transition-all border border-green-600"
+              onClick={() => saveResults(feedback)}
+              disabled={saving}
+              className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-green-700 hover:bg-green-600 text-white transition-all border border-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              💾 Save Results
+              {saving ? "Saving..." : "💾 Save Results"}
             </button>
           )}
           {saved && (
