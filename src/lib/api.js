@@ -606,9 +606,11 @@ async function callGroq(
       clearTimeout(timeout);
 
       if (res.status === 429 || res.status === 503) {
-        console.log(
-          `Groq ${res.status}. Waiting 15s before retry ${i + 1}/${retries}...`,
-        );
+        if (import.meta.env.DEV) {
+          console.log(
+            `Groq ${res.status}. Waiting 15s before retry ${i + 1}/${retries}...`,
+          );
+        }
         await new Promise((resolve) => setTimeout(resolve, 15000));
         continue;
       }
@@ -624,7 +626,9 @@ async function callGroq(
       return data.content;
     } catch (err) {
       if (err.name === "AbortError") {
-        console.log(`Groq timed out. Retrying ${i + 1}/${retries}...`);
+        if (import.meta.env.DEV) {
+          console.log(`Groq timed out. Retrying ${i + 1}/${retries}...`);
+        }
         if (i === retries - 1) {
           throw new Error(
             "Request timed out after 3 attempts. Please try again.",
@@ -635,7 +639,9 @@ async function callGroq(
       }
 
       if (i === retries - 1) throw err;
-      console.log(`Groq call failed. Retrying ${i + 1}/${retries}...`);
+      if (import.meta.env.DEV) {
+        console.log(`Groq call failed. Retrying ${i + 1}/${retries}...`);
+      }
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
@@ -810,7 +816,7 @@ export async function generateFollowUp(
       ? formatSubjectList(subjectInput, "General Computer Science")
       : mode === "custom"
         ? formatSubjectList(subjectInput, "Custom Question Bank")
-      : "General";
+        : "General";
   const communicationModeLabel =
     mode === "communication"
       ? humanizeId(communicationMode, "Impromptu")
@@ -866,7 +872,7 @@ export async function generateFeedback(sessionData, context = {}) {
       ? formatSubjectList(subject, "General Computer Science")
       : mode === "custom"
         ? formatSubjectList(subject, "Custom Question Bank")
-      : "General";
+        : "General";
   const communicationModeLabel =
     mode === "communication"
       ? humanizeId(communicationMode, "Impromptu")
@@ -885,7 +891,8 @@ export async function generateFeedback(sessionData, context = {}) {
               depth: 0,
               relevance: 0,
             },
-            summary: "The question was skipped, so there was no answer to evaluate.",
+            summary:
+              "The question was skipped, so there was no answer to evaluate.",
             whatWentWell: [
               "No strengths to highlight because the question was skipped.",
             ],

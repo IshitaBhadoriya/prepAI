@@ -25,11 +25,12 @@ function formatLabel(value) {
 }
 
 function getQuestionTimeLimit(difficulty, isFollowup) {
-  const baseSeconds = {
-    easy: 180,
-    medium: 150,
-    hard: 120,
-  }[difficulty] || 150;
+  const baseSeconds =
+    {
+      easy: 180,
+      medium: 150,
+      hard: 120,
+    }[difficulty] || 150;
 
   return isFollowup ? Math.max(60, Math.round(baseSeconds * 0.6)) : baseSeconds;
 }
@@ -96,7 +97,10 @@ function InterviewSession() {
     }
 
     return subject
-      ? subject.split(",").map((item) => item.trim()).filter(Boolean)
+      ? subject
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)
       : [];
   }, [selectedSubjects, subject]);
   const subjectSummary = useMemo(
@@ -190,7 +194,6 @@ function InterviewSession() {
           return;
         }
 
-        console.log("Step 1 — calling generateQuestions...");
         const qs = await generateQuestions(
           mode,
           technicalSubjects,
@@ -199,7 +202,6 @@ function InterviewSession() {
           questionRange,
           communicationMode,
         );
-        console.log("Step 2 — questions received:", qs);
 
         setQuestions(qs);
         setCurrentQuestion(qs[0]);
@@ -324,87 +326,90 @@ function InterviewSession() {
     ],
   );
 
-  const handleNext = useCallback(async ({ autoSubmit = false } = {}) => {
-    const answer = (autoSubmit ? latestAnswerRef.current : textAnswer).trim();
-    const allowFollowUp = mode !== "communication";
+  const handleNext = useCallback(
+    async ({ autoSubmit = false } = {}) => {
+      const answer = (autoSubmit ? latestAnswerRef.current : textAnswer).trim();
+      const allowFollowUp = mode !== "communication";
 
-    if (!answer && !autoSubmit) {
-      setError("Please provide an answer before continuing.");
-      return;
-    }
-
-    if (autoSubmit) {
-      autoSubmittedRef.current = true;
-    }
-
-    if (isListening) stopListening();
-
-    setSubmitting(true);
-    setError("");
-
-    const finalAnswer = answer || "[No answer submitted before time ended.]";
-    const newAnswers = [
-      ...answers,
-      {
-        question: currentQuestion,
-        answer: finalAnswer,
-        isFollowup,
-        timedOut: autoSubmit && !answer,
-      },
-    ];
-
-    try {
-      if (allowFollowUp && answer && !isFollowup && followUpCount < 1) {
-        const followUpSubject =
-          mode === "custom"
-            ? customQuestionSetName || subject || "custom question bank"
-            : technicalSubjects;
-        const followUp = await generateFollowUp(
-          currentQuestion,
-          finalAnswer,
-          role,
-          mode,
-          followUpSubject,
-          communicationMode,
-        );
-
-        if (followUp && followUp.length > 5) {
-          setCurrentQuestion(followUp);
-          setIsFollowup(true);
-          setFollowUpCount(1);
-          setAnswers(newAnswers);
-          setTextAnswer("");
-          resetTranscript();
-          setSubmitting(false);
-          return;
-        }
+      if (!answer && !autoSubmit) {
+        setError("Please provide an answer before continuing.");
+        return;
       }
 
-      // 🧠 STEP 2: Move to next main question
-      moveToNextMainQuestion(newAnswers);
-    } catch (err) {
-      console.error("Follow-up error:", err);
-      setError("Something went wrong. Try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  }, [
-    answers,
-    communicationMode,
-    currentQuestion,
-    customQuestionSetName,
-    followUpCount,
-    isFollowup,
-    isListening,
-    mode,
-    moveToNextMainQuestion,
-    resetTranscript,
-    role,
-    stopListening,
-    subject,
-    technicalSubjects,
-    textAnswer,
-  ]);
+      if (autoSubmit) {
+        autoSubmittedRef.current = true;
+      }
+
+      if (isListening) stopListening();
+
+      setSubmitting(true);
+      setError("");
+
+      const finalAnswer = answer || "[No answer submitted before time ended.]";
+      const newAnswers = [
+        ...answers,
+        {
+          question: currentQuestion,
+          answer: finalAnswer,
+          isFollowup,
+          timedOut: autoSubmit && !answer,
+        },
+      ];
+
+      try {
+        if (allowFollowUp && answer && !isFollowup && followUpCount < 1) {
+          const followUpSubject =
+            mode === "custom"
+              ? customQuestionSetName || subject || "custom question bank"
+              : technicalSubjects;
+          const followUp = await generateFollowUp(
+            currentQuestion,
+            finalAnswer,
+            role,
+            mode,
+            followUpSubject,
+            communicationMode,
+          );
+
+          if (followUp && followUp.length > 5) {
+            setCurrentQuestion(followUp);
+            setIsFollowup(true);
+            setFollowUpCount(1);
+            setAnswers(newAnswers);
+            setTextAnswer("");
+            resetTranscript();
+            setSubmitting(false);
+            return;
+          }
+        }
+
+        // 🧠 STEP 2: Move to next main question
+        moveToNextMainQuestion(newAnswers);
+      } catch (err) {
+        console.error("Follow-up error:", err);
+        setError("Something went wrong. Try again.");
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [
+      answers,
+      communicationMode,
+      currentQuestion,
+      customQuestionSetName,
+      followUpCount,
+      isFollowup,
+      isListening,
+      mode,
+      moveToNextMainQuestion,
+      resetTranscript,
+      role,
+      stopListening,
+      subject,
+      technicalSubjects,
+      textAnswer,
+    ],
+  );
 
   const handleSkip = useCallback(() => {
     if (submitting) return;
