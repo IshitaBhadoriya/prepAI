@@ -287,9 +287,7 @@ PrepForge/
 │   ├── context/
 │   ├── hooks/
 │   ├── lib/
-│   ├── pages/
-│   ├── services/
-│   └── assets/
+│   └── pages/
 │
 ├── supabase/
 ├── package.json
