@@ -340,6 +340,17 @@ function InterviewFeedback() {
                   <p className="text-slate-400 text-xs mb-1">Your answer</p>
                   <p className="text-slate-300 text-sm">{answers[i]?.answer}</p>
                 </div>
+                {q.wasSpoken && q.fillerWords && (
+                  <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-slate-400">
+                    <span className="rounded-full bg-slate-800 px-3 py-1">
+                      🎤 {q.wordsPerMinute ?? "--"} words/min
+                    </span>
+                    <span className="rounded-full bg-slate-800 px-3 py-1">
+                      Filler words: um {q.fillerWords.um} · uh{" "}
+                      {q.fillerWords.uh} · like {q.fillerWords.like}
+                    </span>
+                  </div>
+                )}
                 <div className="space-y-3">
                   {q.whatWentWell && (
                     <div>

@@ -4,6 +4,7 @@ import { useAuth } from "../context/useAuth";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { generateQuestions, generateFollowUp } from "../lib/api";
+import { computeSpeechMetrics } from "../lib/speechMetrics";
 
 function formatLabel(value) {
   const labels = {
@@ -141,6 +142,7 @@ function InterviewSession() {
   const hasLoaded = useRef(false);
   const latestAnswerRef = useRef("");
   const autoSubmittedRef = useRef(false);
+  const usedMicRef = useRef(false);
   const [timeLimit, setTimeLimit] = useState(() =>
     getQuestionTimeLimit(sessionDifficulty, false),
   );
@@ -257,6 +259,7 @@ function InterviewSession() {
     setTimeLimit(nextLimit);
     setTimeLeft(nextLimit);
     autoSubmittedRef.current = false;
+    usedMicRef.current = false;
   }, [currentQuestion, sessionDifficulty, isFollowup]);
 
   // Progress calculation
@@ -346,6 +349,11 @@ function InterviewSession() {
       setError("");
 
       const finalAnswer = answer || "[No answer submitted before time ended.]";
+      const elapsedSeconds = Math.max(timeLimit - timeLeft, 1);
+      const spokenMetrics =
+        usedMicRef.current && answer
+          ? computeSpeechMetrics(finalAnswer, elapsedSeconds)
+          : null;
       const newAnswers = [
         ...answers,
         {
@@ -353,6 +361,9 @@ function InterviewSession() {
           answer: finalAnswer,
           isFollowup,
           timedOut: autoSubmit && !answer,
+          wasSpoken: Boolean(spokenMetrics),
+          fillerWords: spokenMetrics?.fillerWords ?? null,
+          wordsPerMinute: spokenMetrics?.wordsPerMinute ?? null,
         },
       ];
 
@@ -580,7 +591,14 @@ function InterviewSession() {
             <label className="text-slate-400 text-sm">Your Answer</label>
             {isSupported && (
               <button
-                onClick={isListening ? stopListening : startListening}
+                onClick={() => {
+                  if (isListening) {
+                    stopListening();
+                  } else {
+                    usedMicRef.current = true;
+                    startListening();
+                  }
+                }}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   isListening
                     ? "bg-red-900/30 text-red-400 border border-red-700/50"

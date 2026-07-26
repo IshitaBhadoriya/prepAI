@@ -571,6 +571,23 @@ function normalizeFeedback(data, questionCount) {
   };
 }
 
+function attachSpeechMetrics(feedback, sessionData) {
+  return {
+    ...feedback,
+    perQuestion: feedback.perQuestion.map((item, index) => {
+      const source = sessionData?.[index];
+      const hasRealMetrics = Boolean(source?.wasSpoken && source?.fillerWords);
+
+      return {
+        ...item,
+        wasSpoken: Boolean(source?.wasSpoken),
+        fillerWords: hasRealMetrics ? source.fillerWords : null,
+        wordsPerMinute: hasRealMetrics ? (source.wordsPerMinute ?? null) : null,
+      };
+    }),
+  };
+}
+
 async function callGroq(
   prompt,
   temperature = 0.7,
@@ -949,43 +966,46 @@ export async function generateFeedback(sessionData, context = {}) {
       "Record mock answers and review whether each sentence adds value.",
     );
 
-    return {
-      overallTechScore,
-      overallCommScore,
-      overallCompletenessScore,
-      summary: summarizeCommunicationPerformance(averageScores),
-      whatWentWell,
-      areasToImprove,
-      studySuggestions,
-      perQuestion: evaluations.map((item, index) => {
-        const commScore = averageScore([
-          item.scores.clarity,
-          item.scores.structure,
-          item.scores.fluency,
-        ]);
-        const techScore = averageScore([
-          item.scores.depth,
-          item.scores.relevance,
-        ]);
-        const completenessScore = averageScore([
-          item.scores.structure,
-          item.scores.depth,
-          item.scores.relevance,
-        ]);
+    return attachSpeechMetrics(
+      {
+        overallTechScore,
+        overallCommScore,
+        overallCompletenessScore,
+        summary: summarizeCommunicationPerformance(averageScores),
+        whatWentWell,
+        areasToImprove,
+        studySuggestions,
+        perQuestion: evaluations.map((item, index) => {
+          const commScore = averageScore([
+            item.scores.clarity,
+            item.scores.structure,
+            item.scores.fluency,
+          ]);
+          const techScore = averageScore([
+            item.scores.depth,
+            item.scores.relevance,
+          ]);
+          const completenessScore = averageScore([
+            item.scores.structure,
+            item.scores.depth,
+            item.scores.relevance,
+          ]);
 
-        return {
-          questionIndex: index,
-          techScore,
-          commScore,
-          completenessScore,
-          scores: item.scores,
-          whatWentWell: item.whatWentWell.join(" "),
-          whatWasMissed: item.issues.join(" "),
-          idealAnswer: item.improvedAnswer,
-          fillerWords: { um: 0, uh: 0, like: 0 },
-        };
-      }),
-    };
+          return {
+            questionIndex: index,
+            techScore,
+            commScore,
+            completenessScore,
+            scores: item.scores,
+            whatWentWell: item.whatWentWell.join(" "),
+            whatWasMissed: item.issues.join(" "),
+            idealAnswer: item.improvedAnswer,
+            fillerWords: { um: 0, uh: 0, like: 0 },
+          };
+        }),
+      },
+      sessionData,
+    );
   }
 
   const qaPairs = sessionData
@@ -1135,5 +1155,8 @@ No markdown. No extra text.
 
   const text = await callGroq(prompt, 0.4, 2048);
   const parsed = JSON.parse(extractJsonBlock(text));
-  return normalizeFeedback(parsed, sessionData.length);
+  return attachSpeechMetrics(
+    normalizeFeedback(parsed, sessionData.length),
+    sessionData,
+  );
 }
