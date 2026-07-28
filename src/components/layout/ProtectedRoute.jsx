@@ -7,8 +7,8 @@ function ProtectedRoute({ children }) {
   // Still checking if user is logged in — show nothing yet
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-400 text-sm">Loading...</div>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-slate-500 text-sm shadow-lg">Loading...</div>
       </div>
     );
   }

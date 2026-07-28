@@ -36,10 +36,10 @@ function ScoreBar({ label, score }) {
   return (
     <div className="mb-3">
       <div className="flex justify-between mb-1">
-        <span className="text-slate-300 text-sm">{label}</span>
+        <span className="text-slate-500 text-sm font-medium">{label}</span>
         <span className="text-white text-sm font-semibold">{score}/10</span>
       </div>
-      <div className="w-full h-2 bg-slate-800 rounded-full">
+      <div className="h-2 w-full rounded-full bg-slate-800 shadow-inner">
         <div
           className={`h-2 rounded-full transition-all duration-700 ${color}`}
           style={{ width: `${percentage}%` }}
@@ -200,12 +200,12 @@ function InterviewFeedback() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
+          <div className="rounded-2xl border border-slate-700 bg-slate-900 p-8 text-center shadow-lg">
             <div className="text-4xl mb-4 animate-pulse">📊</div>
             <p className="text-white font-medium">
               Analysing your interview...
             </p>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-slate-500 text-sm mt-1">
               Reviewing your answers and preparing feedback
             </p>
           </div>
@@ -217,13 +217,13 @@ function InterviewFeedback() {
   if (error) {
     return (
       <DashboardLayout>
-        <div className="px-8 py-8 max-w-3xl">
+        <div className="px-6 py-8 md:px-8 md:py-10 max-w-3xl">
           <div className="px-4 py-3 bg-red-900/20 border border-red-800/40 rounded-lg text-red-400 text-sm mb-4">
             {error}
           </div>
           <button
             onClick={() => navigate("/interview/setup")}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm"
+            className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500"
           >
             Back to Setup
           </button>
@@ -234,10 +234,10 @@ function InterviewFeedback() {
 
   return (
     <DashboardLayout>
-      <div className="px-8 py-8 max-w-3xl">
+      <div className="px-6 py-8 md:px-8 md:py-10 max-w-3xl">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white">Interview Feedback</h1>
-          <p className="text-slate-400 text-sm mt-1 capitalize">
+          <p className="text-slate-500 text-sm mt-1 capitalize">
             {formatLabel(mode)}
             {mode !== "custom" && difficulty
               ? ` / ${formatLabel(difficulty)}`
@@ -247,7 +247,7 @@ function InterviewFeedback() {
           </p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mb-6">
+        <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg">
           <h2 className="text-white font-semibold mb-4">Overall Scores</h2>
           <ScoreBar label={knowledgeLabel} score={feedback.overallTechScore} />
           <ScoreBar label="Communication" score={feedback.overallCommScore} />
@@ -257,33 +257,33 @@ function InterviewFeedback() {
           />
         </div>
 
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mb-6">
+        <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg">
           <h2 className="text-white font-semibold mb-2">Summary</h2>
-          <p className="text-slate-300 text-sm leading-relaxed">
+          <p className="text-slate-600 text-sm leading-relaxed">
             {feedback.summary}
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
+          <div className="rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg">
             <h2 className="text-green-400 font-semibold mb-3">
               ✅ What Went Well
             </h2>
             <ul className="space-y-2">
               {feedback.whatWentWell.map((item, i) => (
-                <li key={i} className="text-slate-300 text-sm">
+                <li key={i} className="text-slate-600 text-sm">
                   • {item}
                 </li>
               ))}
             </ul>
           </div>
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6">
+          <div className="rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg">
             <h2 className="text-yellow-400 font-semibold mb-3">
               ⚠️ Areas to Improve
             </h2>
             <ul className="space-y-2">
               {feedback.areasToImprove.map((item, i) => (
-                <li key={i} className="text-slate-300 text-sm">
+                <li key={i} className="text-slate-600 text-sm">
                   • {item}
                 </li>
               ))}
@@ -291,13 +291,13 @@ function InterviewFeedback() {
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mb-6">
+        <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg">
           <h2 className="text-blue-400 font-semibold mb-3">
             📚 Study Suggestions
           </h2>
           <ul className="space-y-2">
             {feedback.studySuggestions.map((item, i) => (
-              <li key={i} className="text-slate-300 text-sm">
+              <li key={i} className="text-slate-600 text-sm">
                 • {item}
               </li>
             ))}
@@ -312,7 +312,7 @@ function InterviewFeedback() {
             {feedback.perQuestion.map((q, i) => (
               <div
                 key={i}
-                className="bg-slate-900 border border-slate-700 rounded-2xl p-6"
+                className="rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg"
               >
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-slate-400 text-sm font-medium">
@@ -336,9 +336,9 @@ function InterviewFeedback() {
                 <p className="text-white text-sm font-medium mb-3">
                   {answers[i]?.question}
                 </p>
-                <div className="bg-slate-800/50 rounded-xl px-4 py-3 mb-4">
+                <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3">
                   <p className="text-slate-400 text-xs mb-1">Your answer</p>
-                  <p className="text-slate-300 text-sm">{answers[i]?.answer}</p>
+                  <p className="text-slate-600 text-sm">{answers[i]?.answer}</p>
                 </div>
                 {q.wasSpoken && q.fillerWords && (
                   <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-slate-400">
@@ -357,7 +357,7 @@ function InterviewFeedback() {
                       <p className="text-green-400 text-xs font-medium mb-1">
                         ✅ What went well
                       </p>
-                      <p className="text-slate-300 text-sm">{q.whatWentWell}</p>
+                      <p className="text-slate-600 text-sm">{q.whatWentWell}</p>
                     </div>
                   )}
                   {q.whatWasMissed && (
@@ -365,7 +365,7 @@ function InterviewFeedback() {
                       <p className="text-yellow-400 text-xs font-medium mb-1">
                         ⚠️ What was missed
                       </p>
-                      <p className="text-slate-300 text-sm">
+                      <p className="text-slate-600 text-sm">
                         {q.whatWasMissed}
                       </p>
                     </div>
@@ -375,7 +375,7 @@ function InterviewFeedback() {
                       <p className="text-blue-400 text-xs font-medium mb-1">
                         💡 Ideal answer
                       </p>
-                      <p className="text-slate-300 text-sm">{q.idealAnswer}</p>
+                      <p className="text-slate-600 text-sm">{q.idealAnswer}</p>
                     </div>
                   )}
                 </div>
@@ -388,13 +388,13 @@ function InterviewFeedback() {
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             onClick={handleDownloadPdf}
-            className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-white text-slate-950 transition-all hover:bg-slate-200"
+            className="flex-1 rounded-xl border border-slate-700 bg-slate-900 py-4 text-sm font-semibold text-white shadow-lg transition-all hover:bg-slate-800"
           >
             Download PDF Report
           </button>
           <button
             onClick={() => navigate("/interview/setup")}
-            className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-blue-600 hover:bg-blue-500 text-white transition-all"
+            className="flex-1 rounded-xl bg-blue-600 py-4 text-sm font-bold text-white transition-all hover:bg-blue-500"
           >
             Start New Session →
           </button>
@@ -402,19 +402,19 @@ function InterviewFeedback() {
             <button
               onClick={() => saveResults(feedback)}
               disabled={saving}
-              className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-green-700 hover:bg-green-600 text-white transition-all border border-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-xl border border-green-600 bg-green-700 py-4 text-sm font-bold text-white transition-all hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving..." : "💾 Save Results"}
             </button>
           )}
           {saved && (
-            <div className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-slate-800 text-green-400 transition-all border border-slate-700 flex items-center justify-center">
+            <div className="flex flex-1 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 py-4 text-sm font-semibold text-green-400 transition-all">
               ✓ Saved
             </div>
           )}
           <button
             onClick={() => navigate("/dashboard")}
-            className="flex-1 py-3.5 rounded-xl font-semibold text-sm bg-slate-800 hover:bg-slate-700 text-white transition-all border border-slate-700"
+            className="flex-1 rounded-xl border border-slate-700 bg-slate-800 py-4 text-sm font-semibold text-white transition-all hover:bg-slate-700"
           >
             Back to Dashboard
           </button>

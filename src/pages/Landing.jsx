@@ -14,36 +14,42 @@ function Landing() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 via-blue-950 to-slate-900">
+    <div
+      className="min-h-screen bg-slate-950 bg-cover bg-center"
+      style={{
+        backgroundImage:
+          "linear-gradient(90deg, rgba(255,250,253,0.92) 0%, rgba(255,250,253,0.78) 42%, rgba(255,250,253,0.36) 100%), url('/images/prepforge-hero-bg.png')",
+      }}
+    >
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-5">
-        <span className="text-white text-2xl font-bold tracking-tight">
+      <nav className="flex items-center justify-between px-8 py-6">
+        <span className="text-white text-2xl font-extrabold tracking-tight">
           Prep<span className="text-blue-400">Forge</span>
         </span>
         <button
           onClick={handleGoogleLogin}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
         >
           Sign in
         </button>
       </nav>
 
       {/* Hero */}
-      <div className="flex flex-col items-center justify-center text-center px-6 pt-24 pb-16">
-        <div className="inline-block bg-blue-900/40 border border-blue-700/50 text-blue-300 text-sm px-4 py-1.5 rounded-full mb-6">
+      <div className="flex flex-col items-center justify-center text-center px-6 pt-24 pb-20">
+        <div className="mb-6 inline-block rounded-full border border-blue-800 bg-blue-900/70 px-4 py-1.5 text-sm font-semibold text-blue-400 shadow-lg">
           AI-powered interview practice
         </div>
-        <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight max-w-3xl">
+        <h1 className="max-w-3xl text-5xl font-extrabold leading-tight text-white md:text-6xl">
           Practice interviews like a{" "}
           <span className="text-blue-400">real candidate</span>
         </h1>
-        <p className="text-slate-400 text-lg mt-6 max-w-xl">
+        <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
           AI-driven mock interviews for HR, communication, DSA, DBMS, OS, and
           CN. Get real feedback on content, confidence, and clarity.
         </p>
         <button
           onClick={handleGoogleLogin}
-          className="mt-10 bg-blue-600 hover:bg-blue-500 text-white text-lg font-semibold px-8 py-4 rounded-xl transition-colors shadow-lg shadow-blue-900/40"
+          className="mt-10 rounded-xl bg-blue-600 px-8 py-4 text-lg font-bold text-white shadow-lg shadow-blue-900/40 transition-colors hover:bg-blue-500"
         >
           Start Practicing Free →
         </button>
@@ -88,17 +94,17 @@ function Landing() {
         ].map((f) => (
           <div
             key={f.title}
-            className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 hover:border-blue-700/50 transition-colors"
+            className="rounded-xl border border-slate-700 bg-slate-900/85 p-7 shadow-lg transition-all hover:-translate-y-0.5 hover:border-blue-800"
           >
             <div className="text-3xl mb-3">{f.icon}</div>
             <h3 className="text-white font-semibold text-lg mb-2">{f.title}</h3>
-            <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
+            <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
           </div>
         ))}
       </div>
 
       {/* Footer */}
-      <div className="text-center text-slate-600 text-sm py-8">
+      <div className="text-center text-slate-500 text-sm py-8">
         Built with React, Supabase, and server-side AI feedback
       </div>
     </div>

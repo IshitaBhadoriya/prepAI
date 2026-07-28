@@ -577,12 +577,12 @@ function InterviewSession() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
+          <div className="rounded-2xl border border-slate-700 bg-slate-900 p-8 text-center shadow-lg">
             <div className="text-4xl mb-4 animate-pulse">🤔</div>
             <p className="text-white font-medium">
               Preparing your questions...
             </p>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-slate-500 text-sm mt-1">
               Preparing a personalised interview for you
             </p>
           </div>
@@ -595,24 +595,24 @@ function InterviewSession() {
     return (
       <DashboardLayout>
         <div className="flex min-h-screen items-center justify-center px-6">
-          <div className="w-full max-w-lg rounded-lg border border-red-900/50 bg-slate-900 p-6">
+          <div className="w-full max-w-lg rounded-2xl border border-red-900 bg-slate-900 p-6 shadow-lg">
             <p className="text-xs font-semibold uppercase tracking-wider text-red-400">
               Interview could not start
             </p>
             <h1 className="mt-2 text-2xl font-bold text-white">
               Questions did not load.
             </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-300">{error}</p>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{error}</p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={retryLoadingQuestions}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500"
+                className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500"
               >
                 Retry
               </button>
               <button
                 onClick={() => navigate("/interview/setup")}
-                className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700"
+                className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700"
               >
                 Back to setup
               </button>
@@ -625,17 +625,17 @@ function InterviewSession() {
 
   return (
     <DashboardLayout>
-      <div className="px-8 py-8 max-w-3xl">
+      <div className="px-6 py-8 md:px-8 md:py-10 max-w-3xl">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <p className="text-slate-400 text-sm capitalize">
+            <p className="text-slate-500 text-sm capitalize">
               {formatLabel(mode)}
               {mode !== "custom" ? ` / ${formatLabel(sessionDifficulty)}` : ""}
               {sessionContextLabel ? ` / ${sessionContextLabel}` : ""}
             </p>
           </div>
-          <span className="text-slate-400 text-sm">
+          <span className="text-slate-500 text-sm">
             Question {currentIndex + 1} of {totalQuestions}
             {isFollowup && (
               <span className="ml-2 text-yellow-400 text-xs">(follow-up)</span>
@@ -643,9 +643,9 @@ function InterviewSession() {
           </span>
         </div>
 
-        <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <div className="mb-6 rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-lg">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-300">
+            <span className="text-sm font-medium text-slate-500">
               Time remaining
             </span>
             <span
@@ -657,9 +657,9 @@ function InterviewSession() {
               {formatTime(timeLeft)}
             </span>
           </div>
-          <div className="h-2 w-full rounded-full bg-slate-800">
+          <div className="h-2.5 w-full rounded-full bg-slate-800 shadow-inner">
             <div
-              className={`h-2 rounded-full transition-all duration-500 ${
+              className={`h-2.5 rounded-full transition-all duration-500 ${
                 timeLeft <= 20
                   ? "bg-red-500"
                   : timeLeft <= 45
@@ -677,15 +677,15 @@ function InterviewSession() {
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full h-1.5 bg-slate-800 rounded-full mb-8">
+        <div className="mb-8 h-2 w-full rounded-full bg-slate-800 shadow-inner">
           <div
-            className="h-1.5 bg-blue-500 rounded-full transition-all duration-500"
+            className="h-2 rounded-full bg-blue-500 transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
 
         {/* Question Card */}
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mb-6">
+        <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-900 p-8 shadow-lg">
           <p className="text-white text-lg font-medium leading-relaxed">
             {currentQuestion}
           </p>
@@ -694,7 +694,7 @@ function InterviewSession() {
         {/* Answer Input */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-slate-400 text-sm">Your Answer</label>
+            <label className="text-slate-500 text-sm">Your Answer</label>
             {isSupported && (
               <button
                 onClick={handleMicToggle}
@@ -704,7 +704,7 @@ function InterviewSession() {
                     ? "bg-yellow-900/30 text-yellow-400 border border-yellow-700/50 cursor-not-allowed"
                     : isListening
                       ? "bg-red-900/30 text-red-400 border border-red-700/50"
-                      : "bg-slate-800 text-slate-400 border border-slate-700 hover:text-white"
+                      : "bg-slate-800 text-slate-500 border border-slate-700 hover:text-white"
                 }`}
               >
                 {isMicConnecting
@@ -734,7 +734,7 @@ function InterviewSession() {
             onChange={(e) => setTextAnswer(e.target.value)}
             placeholder="Type your answer here, or use the microphone button above..."
             rows={5}
-            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm resize-none focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm resize-none shadow-lg focus:outline-none focus:border-blue-500 transition-colors"
           />
         </div>
 
@@ -749,7 +749,7 @@ function InterviewSession() {
         <button
           onClick={() => handleNext()}
           disabled={submitting || !textAnswer.trim()}
-          className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all ${
+          className={`w-full rounded-xl py-4 text-sm font-bold shadow-lg transition-all ${
             submitting || !textAnswer.trim()
               ? "bg-slate-800 text-slate-600 cursor-not-allowed"
               : "bg-blue-600 hover:bg-blue-500 text-white"
@@ -761,7 +761,7 @@ function InterviewSession() {
           type="button"
           onClick={handleSkip}
           disabled={submitting}
-          className={`mt-3 w-full rounded-xl border py-3.5 text-sm font-semibold transition-all ${
+          className={`mt-3 w-full rounded-xl border py-4 text-sm font-semibold transition-all ${
             submitting
               ? "cursor-not-allowed border-slate-800 bg-slate-900 text-slate-600"
               : "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"

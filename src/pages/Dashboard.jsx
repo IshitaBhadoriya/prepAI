@@ -21,6 +21,16 @@ import {
   PolarRadiusAxis,
 } from "recharts";
 
+const chartColors = {
+  grid: "#ead8e0",
+  axis: "#99889a",
+  axisSubtle: "#565d77",
+  accent: "#624a66",
+  accentStrong: "#3c435f",
+  muted: "#565d77",
+  heatmap: ["#f3e4eb", "#dbc3cd", "#b49fae", "#624a66"],
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function computeReadiness(avgScore, streak, total) {
@@ -36,10 +46,7 @@ function computeReadiness(avgScore, streak, total) {
 }
 
 function heatmapColor(count) {
-  if (count === 0) return "#1e293b";
-  if (count === 1) return "#1e3a5f";
-  if (count === 2) return "#1d4ed8";
-  return "#3b82f6";
+  return chartColors.heatmap[Math.min(count, chartColors.heatmap.length - 1)];
 }
 
 // Build real chart data from sessions array
@@ -149,18 +156,20 @@ function buildHeatmapFromSessions(sessions) {
 function StatCard({ icon, label, value, sub, color, highlight }) {
   return (
     <div
-      className={`bg-slate-900 border rounded-xl p-5 ${highlight ? "border-blue-700/60" : "border-slate-800"}`}
+      className={`bg-slate-900 border rounded-xl p-6 shadow-lg transition-all hover:-translate-y-0.5 ${highlight ? "border-blue-700/60" : "border-slate-700"}`}
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="text-2xl">{icon}</span>
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-900 text-2xl shadow-lg">
+          {icon}
+        </span>
         <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full ${color}`}
+          className={`text-xs font-semibold px-2.5 py-1 rounded-full ${color}`}
         >
           {sub}
         </span>
       </div>
-      <div className="text-3xl font-bold text-white mb-1">{value}</div>
-      <div className="text-slate-400 text-sm">{label}</div>
+      <div className="mb-1 text-4xl font-extrabold text-white">{value}</div>
+      <div className="text-sm font-medium text-slate-500">{label}</div>
     </div>
   );
 }
@@ -191,7 +200,7 @@ function SessionRow({ session, onClick }) {
   return (
     <div
       onClick={() => hasFeedback && onClick(session)}
-      className={`flex items-center justify-between px-6 py-4 border-b border-slate-800 last:border-0 transition-colors ${hasFeedback ? "hover:bg-slate-800/30 cursor-pointer" : "opacity-60"}`}
+      className={`flex items-center justify-between px-6 py-4 border-b border-slate-700 last:border-0 transition-all ${hasFeedback ? "hover:bg-slate-800/60 cursor-pointer" : "opacity-60"}`}
     >
       <div>
         <div className="text-white text-sm font-medium flex items-center gap-2">
@@ -237,7 +246,7 @@ function EmptyHistory() {
 function CustomTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+      <div className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 shadow-lg">
         <p className="text-slate-400 text-xs">{label}</p>
         <p className="text-white text-sm font-semibold">
           {payload[0].value}/10
@@ -255,10 +264,10 @@ function ScoreBar({ label, score }) {
   return (
     <div className="mb-3">
       <div className="flex justify-between mb-1">
-        <span className="text-slate-300 text-sm">{label}</span>
+        <span className="text-slate-500 text-sm font-medium">{label}</span>
         <span className="text-white text-sm font-semibold">{score}/10</span>
       </div>
-      <div className="w-full h-2 bg-slate-800 rounded-full">
+      <div className="h-2 w-full rounded-full bg-slate-800 shadow-inner">
         <div
           className={`h-2 rounded-full transition-all duration-700 ${color}`}
           style={{ width: `${pct}%` }}
@@ -319,7 +328,7 @@ function ActivityHeatmap({ data }) {
       </div>
       {tooltip && (
         <div
-          className="fixed z-50 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 pointer-events-none"
+          className="fixed z-50 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 shadow-lg pointer-events-none"
           style={{ left: tooltip.x + 12, top: tooltip.y - 40 }}
         >
           <p className="text-slate-400 text-xs">{tooltip.day.date}</p>
@@ -345,10 +354,10 @@ function SessionFeedbackModal({ session, onClose }) {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 overflow-y-auto py-8 px-4">
-      <div className="bg-slate-950 border border-slate-700 rounded-2xl w-full max-w-2xl">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/35 backdrop-blur-sm overflow-y-auto py-8 px-4">
+      <div className="bg-slate-950 border border-slate-700 rounded-2xl shadow-lg w-full max-w-2xl">
         {/* Modal header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
           <div>
             <h2 className="text-white font-semibold">Session Feedback</h2>
             <p className="text-slate-400 text-xs mt-0.5 capitalize">
@@ -365,7 +374,7 @@ function SessionFeedbackModal({ session, onClose }) {
 
         <div className="px-6 py-6 space-y-6">
           {/* Scores */}
-          <div className="bg-slate-900 rounded-xl p-5">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-5">
             <h3 className="text-white font-medium mb-4">Overall Scores</h3>
             <ScoreBar label="Technical / Content" score={f.overallTechScore} />
             <ScoreBar label="Communication" score={f.overallCommScore} />
@@ -373,34 +382,34 @@ function SessionFeedbackModal({ session, onClose }) {
           </div>
 
           {/* Summary */}
-          <div className="bg-slate-900 rounded-xl p-5">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-5">
             <h3 className="text-white font-medium mb-2">Summary</h3>
-            <p className="text-slate-300 text-sm leading-relaxed">
+            <p className="text-slate-600 text-sm leading-relaxed">
               {f.summary}
             </p>
           </div>
 
           {/* What went well + Areas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-slate-900 rounded-xl p-5">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-5">
               <h3 className="text-green-400 font-medium mb-3">
                 ✅ What Went Well
               </h3>
               <ul className="space-y-1.5">
                 {f.whatWentWell?.map((item, i) => (
-                  <li key={i} className="text-slate-300 text-sm">
+                  <li key={i} className="text-slate-600 text-sm">
                     • {item}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="bg-slate-900 rounded-xl p-5">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-5">
               <h3 className="text-yellow-400 font-medium mb-3">
                 ⚠️ Areas to Improve
               </h3>
               <ul className="space-y-1.5">
                 {f.areasToImprove?.map((item, i) => (
-                  <li key={i} className="text-slate-300 text-sm">
+                  <li key={i} className="text-slate-600 text-sm">
                     • {item}
                   </li>
                 ))}
@@ -409,13 +418,13 @@ function SessionFeedbackModal({ session, onClose }) {
           </div>
 
           {/* Study suggestions */}
-          <div className="bg-slate-900 rounded-xl p-5">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-5">
             <h3 className="text-blue-400 font-medium mb-3">
               📚 Study Suggestions
             </h3>
             <ul className="space-y-1.5">
               {f.studySuggestions?.map((item, i) => (
-                <li key={i} className="text-slate-300 text-sm">
+                <li key={i} className="text-slate-600 text-sm">
                   • {item}
                 </li>
               ))}
@@ -430,7 +439,7 @@ function SessionFeedbackModal({ session, onClose }) {
               </h3>
               <div className="space-y-3">
                 {f.perQuestion.map((q, i) => (
-                  <div key={i} className="bg-slate-900 rounded-xl p-4">
+                  <div key={i} className="bg-slate-900 border border-slate-700 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-slate-400 text-xs font-medium">
                         Question {i + 1}
@@ -547,10 +556,10 @@ function Dashboard() {
         />
       )}
 
-      <div className="px-8 py-8">
+      <div className="px-6 py-8 md:px-8 md:py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white">Hey, {firstName} 👋</h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-slate-500 text-sm mt-1">
             Ready to practice today?
           </p>
         </div>
@@ -591,11 +600,11 @@ function Dashboard() {
         </div>
 
         {/* Quick Start */}
-        <div className="bg-linear-to-r from-blue-900/40 to-blue-800/20 border border-blue-800/40 rounded-xl p-6 mb-8">
+        <div className="mb-8 rounded-xl border border-blue-800 bg-linear-to-r from-blue-950 to-blue-900 p-7 shadow-lg">
           <h2 className="text-white font-semibold text-lg mb-1">
             Start a session
           </h2>
-          <p className="text-slate-400 text-sm mb-4">
+          <p className="text-slate-600 text-sm mb-4">
             Choose your interview type and difficulty to begin.
           </p>
           <button
@@ -608,7 +617,7 @@ function Dashboard() {
 
         {/* Charts — show real data or empty state */}
         {!hasEnoughData ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 mb-8 text-center">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-8 mb-8 text-center shadow-lg">
             <div className="text-4xl mb-3">📊</div>
             <h3 className="text-white font-semibold mb-1">
               Complete 2+ sessions to see your charts
@@ -622,7 +631,7 @@ function Dashboard() {
           <>
             {/* Row 1 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-lg">
                 <h2 className="text-white font-semibold mb-1">
                   Score Over Time
                 </h2>
@@ -631,16 +640,16 @@ function Dashboard() {
                 </p>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={scoreOverTime}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                     <XAxis
                       dataKey="date"
-                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      tick={{ fill: chartColors.axis, fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <YAxis
                       domain={[0, 10]}
-                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      tick={{ fill: chartColors.axis, fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
                     />
@@ -648,9 +657,9 @@ function Dashboard() {
                     <Line
                       type="monotone"
                       dataKey="score"
-                      stroke="#3b82f6"
+                      stroke={chartColors.accent}
                       strokeWidth={2}
-                      dot={{ fill: "#3b82f6", r: 3 }}
+                      dot={{ fill: chartColors.accent, r: 3 }}
                       activeDot={{ r: 5 }}
                     />
                   </LineChart>
@@ -658,7 +667,7 @@ function Dashboard() {
               </div>
 
               {performanceBreakdown && (
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-lg">
                   <h2 className="text-white font-semibold mb-1">
                     Performance Breakdown
                   </h2>
@@ -667,16 +676,16 @@ function Dashboard() {
                   </p>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={performanceBreakdown} barSize={40}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                       <XAxis
                         dataKey="area"
-                        tick={{ fill: "#64748b", fontSize: 11 }}
+                        tick={{ fill: chartColors.axis, fontSize: 11 }}
                         axisLine={false}
                         tickLine={false}
                       />
                       <YAxis
                         domain={[0, 10]}
-                        tick={{ fill: "#64748b", fontSize: 11 }}
+                        tick={{ fill: chartColors.axis, fontSize: 11 }}
                         axisLine={false}
                         tickLine={false}
                       />
@@ -687,10 +696,10 @@ function Dashboard() {
                             key={i}
                             fill={
                               entry.score >= 7
-                                ? "#22c55e"
+                                ? chartColors.accent
                                 : entry.score >= 4
-                                  ? "#eab308"
-                                  : "#ef4444"
+                                  ? chartColors.muted
+                                  : chartColors.accentStrong
                             }
                           />
                         ))}
@@ -698,7 +707,7 @@ function Dashboard() {
                     </BarChart>
                   </ResponsiveContainer>
                   {weakArea && (
-                    <div className="mt-4 px-3 py-2 bg-red-900/20 border border-red-800/30 rounded-lg flex items-center gap-2">
+                    <div className="mt-4 px-3 py-2 bg-red-900/60 border border-red-800 rounded-lg flex items-center gap-2">
                       <span className="text-red-400 text-sm">⚠️</span>
                       <p className="text-red-400 text-xs">
                         Focus area:{" "}
@@ -714,7 +723,7 @@ function Dashboard() {
             {/* Row 2 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {subjectRadar && subjectRadar.length >= 3 ? (
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-lg">
                   <h2 className="text-white font-semibold mb-1">
                     Subject Radar
                   </h2>
@@ -723,29 +732,29 @@ function Dashboard() {
                   </p>
                   <ResponsiveContainer width="100%" height={260}>
                     <RadarChart data={subjectRadar} outerRadius={90}>
-                      <PolarGrid stroke="#1e293b" />
+                      <PolarGrid stroke={chartColors.grid} />
                       <PolarAngleAxis
                         dataKey="subject"
-                        tick={{ fill: "#94a3b8", fontSize: 12 }}
+                        tick={{ fill: chartColors.axisSubtle, fontSize: 12 }}
                       />
                       <PolarRadiusAxis
                         angle={90}
                         domain={[0, 10]}
-                        tick={{ fill: "#475569", fontSize: 10 }}
+                        tick={{ fill: chartColors.muted, fontSize: 10 }}
                         tickCount={6}
                       />
                       <Radar
                         name="Score"
                         dataKey="score"
-                        stroke="#3b82f6"
-                        fill="#3b82f6"
+                        stroke={chartColors.accent}
+                        fill={chartColors.accent}
                         fillOpacity={0.2}
-                        dot={{ fill: "#3b82f6", r: 4 }}
+                        dot={{ fill: chartColors.accent, r: 4 }}
                       />
                       <Tooltip
                         content={({ active, payload }) =>
                           active && payload?.length ? (
-                            <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+                            <div className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 shadow-lg">
                               <p className="text-slate-400 text-xs">
                                 {payload[0].payload.subject}
                               </p>
@@ -760,7 +769,7 @@ function Dashboard() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center text-center">
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-lg flex flex-col items-center justify-center text-center">
                   <div className="text-3xl mb-2">🕸️</div>
                   <p className="text-slate-400 text-sm font-medium">
                     Subject Radar
@@ -771,7 +780,7 @@ function Dashboard() {
                 </div>
               )}
 
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-lg">
                 <h2 className="text-white font-semibold mb-1">
                   Practice Activity
                 </h2>
@@ -785,8 +794,8 @@ function Dashboard() {
         )}
 
         {/* Session History */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl">
-          <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-lg">
+          <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
             <h2 className="text-white font-semibold">Recent Sessions</h2>
             <span className="text-slate-500 text-sm">
               {stats.total} session{stats.total !== 1 ? "s" : ""}

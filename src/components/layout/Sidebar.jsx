@@ -19,18 +19,18 @@ function Sidebar({ open, onClose }) {
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 w-64 min-h-screen bg-slate-900 border-r border-slate-800 flex flex-col transform transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${
+      className={`fixed inset-y-0 left-0 z-40 flex h-screen w-64 flex-col border-r border-slate-700 bg-slate-900/95 shadow-lg backdrop-blur-xl transition-transform duration-200 ease-in-out md:translate-x-0 ${
         open ? "translate-x-0" : "-translate-x-full"
       }`}
     >
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
-        <span className="text-white text-xl font-bold">
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-700 px-6 py-6">
+        <span className="text-white text-xl font-extrabold tracking-tight">
           Prep<span className="text-blue-400">Forge</span>
         </span>
         <button
           onClick={onClose}
-          className="md:hidden text-slate-400 hover:text-white text-xl leading-none"
+          className="md:hidden text-slate-500 hover:text-white text-xl leading-none"
           aria-label="Close menu"
         >
           ✕
@@ -38,21 +38,21 @@ function Sidebar({ open, onClose }) {
       </div>
 
       {/* Nav Links */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-5">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             onClick={onClose}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold transition-all ${
                 isActive
-                  ? "bg-blue-600/20 text-blue-400 border border-blue-700/30"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+                  ? "bg-blue-900 text-blue-600 border border-blue-800 shadow-lg"
+                  : "text-slate-600 hover:text-white hover:bg-slate-800 hover:shadow-lg"
               }`
             }
           >
-            <span className="w-6 text-xs font-bold text-slate-500">
+            <span className="w-6 text-xs font-bold text-slate-400">
               {item.label === "Question Bank"
                 ? "QB"
                 : item.label.slice(0, 2).toUpperCase()}
@@ -63,10 +63,10 @@ function Sidebar({ open, onClose }) {
       </nav>
 
       {/* Logout */}
-      <div className="px-3 py-4 border-t border-slate-800">
+      <div className="mt-auto shrink-0 border-t border-slate-700 px-3 py-5">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors w-full [&>span:first-child]:hidden"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-800 hover:text-white hover:shadow-lg [&>span:first-child]:hidden"
         >
           <span>🚪</span>
           Logout
