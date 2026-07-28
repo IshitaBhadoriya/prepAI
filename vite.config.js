@@ -3,6 +3,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { handleAiRequest } from "./api/_ai.js";
+import { handleDeepgramTokenRequest } from "./api/_deepgram.js";
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -35,6 +36,31 @@ function localApiPlugin(env) {
             method: req.method,
             headers: req.headers,
             body,
+            env,
+          });
+
+          res.statusCode = result.status;
+          for (const [key, value] of Object.entries(result.headers)) {
+            res.setHeader(key, value);
+          }
+          res.end(JSON.stringify(result.body));
+        } catch (error) {
+          res.statusCode = 400;
+          res.setHeader("Content-Type", "application/json");
+          res.end(
+            JSON.stringify({
+              error: "Invalid API request.",
+              details: error?.message || "Unknown error.",
+            }),
+          );
+        }
+      });
+
+      server.middlewares.use("/api/deepgram-token", async (req, res) => {
+        try {
+          const result = await handleDeepgramTokenRequest({
+            method: req.method,
+            headers: req.headers,
             env,
           });
 

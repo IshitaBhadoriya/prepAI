@@ -2,9 +2,12 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import DashboardLayout from "../components/layout/DashboardLayout";
+import { useDeepgramTranscription } from "../hooks/useDeepgramTranscription";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { generateQuestions, generateFollowUp } from "../lib/api";
 import { computeSpeechMetrics } from "../lib/speechMetrics";
+
+const USE_DEEPGRAM = import.meta.env.VITE_USE_DEEPGRAM !== "false";
 
 function formatLabel(value) {
   const labels = {
@@ -143,22 +146,103 @@ function InterviewSession() {
   const latestAnswerRef = useRef("");
   const autoSubmittedRef = useRef(false);
   const usedMicRef = useRef(false);
+  const wantsMicRef = useRef(false);
+  const deepgramFallbackWarnedRef = useRef(false);
   const [timeLimit, setTimeLimit] = useState(() =>
     getQuestionTimeLimit(sessionDifficulty, false),
   );
   const [timeLeft, setTimeLeft] = useState(() =>
     getQuestionTimeLimit(sessionDifficulty, false),
   );
+  const [useWebSpeechFallback, setUseWebSpeechFallback] = useState(false);
 
   // Speech recognition
-  const {
-    transcript,
-    isListening,
-    isSupported,
-    startListening,
-    stopListening,
-    resetTranscript,
-  } = useSpeechRecognition();
+  const deepgram = useDeepgramTranscription();
+  const webSpeech = useSpeechRecognition();
+  const usingDeepgram = USE_DEEPGRAM && !useWebSpeechFallback;
+  const transcript = usingDeepgram ? deepgram.transcript : webSpeech.transcript;
+  const isListening = usingDeepgram
+    ? deepgram.isListening
+    : webSpeech.isListening;
+  const isSupported = usingDeepgram
+    ? deepgram.isSupported
+    : webSpeech.isSupported;
+  const startListening = usingDeepgram
+    ? deepgram.startListening
+    : webSpeech.startListening;
+  const stopListening = usingDeepgram
+    ? deepgram.stopListening
+    : webSpeech.stopListening;
+  const recognitionWords = usingDeepgram ? deepgram.words : undefined;
+  const recognitionDuration = usingDeepgram ? deepgram.duration : undefined;
+  const isMicConnecting = usingDeepgram && deepgram.isConnecting;
+  useEffect(() => {
+    if (!USE_DEEPGRAM || useWebSpeechFallback) {
+      return;
+    }
+
+    if (!deepgram.isSupported && webSpeech.isSupported) {
+      setUseWebSpeechFallback(true);
+
+      if (import.meta.env.DEV && !deepgramFallbackWarnedRef.current) {
+        console.warn(
+          "Deepgram voice recognition is unavailable. Switching to browser speech recognition.",
+        );
+        deepgramFallbackWarnedRef.current = true;
+      }
+      return;
+    }
+
+    if (deepgram.connectionError) {
+      setUseWebSpeechFallback(true);
+
+      if (import.meta.env.DEV && !deepgramFallbackWarnedRef.current) {
+        console.warn(
+          "Deepgram voice recognition failed. Switching to browser speech recognition.",
+          deepgram.connectionError,
+        );
+        deepgramFallbackWarnedRef.current = true;
+      }
+    }
+  }, [
+    deepgram.connectionError,
+    deepgram.isSupported,
+    useWebSpeechFallback,
+    webSpeech.isSupported,
+  ]);
+
+  useEffect(() => {
+    if (
+      !useWebSpeechFallback ||
+      !wantsMicRef.current ||
+      webSpeech.isListening ||
+      !webSpeech.isSupported
+    ) {
+      return;
+    }
+
+    webSpeech.resetTranscript();
+    webSpeech.startListening();
+  }, [useWebSpeechFallback, webSpeech]);
+
+  const resetSpeechTranscripts = useCallback(() => {
+    deepgram.resetTranscript();
+    webSpeech.resetTranscript();
+  }, [deepgram, webSpeech]);
+
+  const handleMicToggle = useCallback(() => {
+    if (isMicConnecting) return;
+
+    if (isListening) {
+      wantsMicRef.current = false;
+      stopListening();
+      return;
+    }
+
+    usedMicRef.current = true;
+    wantsMicRef.current = true;
+    startListening();
+  }, [isListening, isMicConnecting, startListening, stopListening]);
 
   // Load questions on mount
   useEffect(() => {
@@ -310,7 +394,7 @@ function InterviewSession() {
       setIsFollowup(false);
       setFollowUpCount(0);
       setTextAnswer("");
-      resetTranscript();
+      resetSpeechTranscripts();
     },
     [
       communicationMode,
@@ -320,7 +404,7 @@ function InterviewSession() {
       mode,
       navigate,
       questions,
-      resetTranscript,
+      resetSpeechTranscripts,
       role,
       sessionDifficulty,
       subject,
@@ -343,16 +427,26 @@ function InterviewSession() {
         autoSubmittedRef.current = true;
       }
 
-      if (isListening) stopListening();
+      if (isListening) {
+        wantsMicRef.current = false;
+        stopListening();
+      }
 
       setSubmitting(true);
       setError("");
 
       const finalAnswer = answer || "[No answer submitted before time ended.]";
       const elapsedSeconds = Math.max(timeLimit - timeLeft, 1);
+      const speechDuration = usingDeepgram
+        ? Math.max(Number(recognitionDuration) || 0, elapsedSeconds)
+        : elapsedSeconds;
       const spokenMetrics =
         usedMicRef.current && answer
-          ? computeSpeechMetrics(finalAnswer, elapsedSeconds)
+          ? computeSpeechMetrics({
+              transcript: finalAnswer,
+              words: usingDeepgram ? recognitionWords : undefined,
+              duration: speechDuration,
+            })
           : null;
       const newAnswers = [
         ...answers,
@@ -364,6 +458,10 @@ function InterviewSession() {
           wasSpoken: Boolean(spokenMetrics),
           fillerWords: spokenMetrics?.fillerWords ?? null,
           wordsPerMinute: spokenMetrics?.wordsPerMinute ?? null,
+          longestPauseSeconds: spokenMetrics?.longestPauseSeconds ?? null,
+          averagePauseSeconds: spokenMetrics?.averagePauseSeconds ?? null,
+          repeatedPhrases: spokenMetrics?.repeatedPhrases ?? [],
+          usedRealTimestamps: spokenMetrics?.usedRealTimestamps ?? false,
         },
       ];
 
@@ -388,7 +486,7 @@ function InterviewSession() {
             setFollowUpCount(1);
             setAnswers(newAnswers);
             setTextAnswer("");
-            resetTranscript();
+            resetSpeechTranscripts();
             setSubmitting(false);
             return;
           }
@@ -413,19 +511,27 @@ function InterviewSession() {
       isListening,
       mode,
       moveToNextMainQuestion,
-      resetTranscript,
+      recognitionDuration,
+      recognitionWords,
       role,
+      resetSpeechTranscripts,
       stopListening,
       subject,
       technicalSubjects,
       textAnswer,
+      timeLeft,
+      timeLimit,
+      usingDeepgram,
     ],
   );
 
   const handleSkip = useCallback(() => {
     if (submitting) return;
 
-    if (isListening) stopListening();
+    if (isListening) {
+      wantsMicRef.current = false;
+      stopListening();
+    }
 
     const skippedAnswers = [
       ...answers,
@@ -591,24 +697,30 @@ function InterviewSession() {
             <label className="text-slate-400 text-sm">Your Answer</label>
             {isSupported && (
               <button
-                onClick={() => {
-                  if (isListening) {
-                    stopListening();
-                  } else {
-                    usedMicRef.current = true;
-                    startListening();
-                  }
-                }}
+                onClick={handleMicToggle}
+                disabled={isMicConnecting}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  isListening
-                    ? "bg-red-900/30 text-red-400 border border-red-700/50"
-                    : "bg-slate-800 text-slate-400 border border-slate-700 hover:text-white"
+                  isMicConnecting
+                    ? "bg-yellow-900/30 text-yellow-400 border border-yellow-700/50 cursor-not-allowed"
+                    : isListening
+                      ? "bg-red-900/30 text-red-400 border border-red-700/50"
+                      : "bg-slate-800 text-slate-400 border border-slate-700 hover:text-white"
                 }`}
               >
-                {isListening ? "⏹ Stop Recording" : "🎤 Use Microphone"}
+                {isMicConnecting
+                  ? "⏳ Connecting..."
+                  : isListening
+                    ? "⏹ Stop Recording"
+                    : "🎤 Use Microphone"}
               </button>
             )}
           </div>
+
+          {USE_DEEPGRAM && useWebSpeechFallback && (
+            <p className="mb-2 text-xs text-yellow-400">
+              Voice recognition switched to browser mode.
+            </p>
+          )}
 
           {isListening && (
             <div className="flex items-center gap-2 mb-2 text-xs text-red-400">
