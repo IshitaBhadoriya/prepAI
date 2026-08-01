@@ -53,19 +53,19 @@ function PracticeSetupModal({ questionSet, onClose, onStart }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-4 py-8 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 shadow-lg"
+        className="w-full max-w-md rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] shadow-lg"
       >
-        <div className="border-b border-slate-700 px-6 py-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-blue-400">
+        <div className="border-b border-[var(--pf-border)] px-6 py-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-primary)]">
             Start Practice
           </p>
-          <h2 className="mt-1 text-lg font-semibold text-white">
+          <h2 className="mt-1 text-lg font-semibold text-[var(--pf-text)]">
             {questionSet.name}
           </h2>
         </div>
 
         <div className="px-6 py-7">
-          <label className="mb-2 block text-sm font-medium text-slate-500">
+          <label className="mb-2 block text-sm font-medium text-[var(--pf-muted)]">
             Questions to practice
           </label>
           <input
@@ -74,26 +74,26 @@ function PracticeSetupModal({ questionSet, onClose, onStart }) {
             max={totalQuestions}
             value={questionCount}
             onChange={(event) => setQuestionCount(event.target.value)}
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-blue-500"
+            className="w-full rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 text-sm text-[var(--pf-text)] outline-none transition-colors focus:border-[var(--pf-primary)] focus:ring-4 focus:ring-lavender-300/50"
           />
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-[var(--pf-muted)]">
             {requestedQuestionCount} random question
             {requestedQuestionCount === 1 ? "" : "s"} will be selected from{" "}
             {totalQuestions} saved questions.
           </p>
         </div>
 
-        <div className="flex flex-col-reverse gap-3 border-t border-slate-700 px-6 py-4 sm:flex-row sm:justify-end">
+        <div className="flex flex-col-reverse gap-3 border-t border-[var(--pf-border)] px-6 py-4 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-500 hover:bg-slate-800 hover:text-white"
+            className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 text-sm font-semibold text-[var(--pf-muted)] hover:bg-[var(--pf-panel-soft)] hover:text-[var(--pf-text)]"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500"
+            className="rounded-lg bg-[var(--pf-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--pf-primary-dark)]"
           >
             Start Interview
           </button>
@@ -148,21 +148,21 @@ function QuestionSetModal({ initialSet, saving, onClose, onSave }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-4 py-8 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-5xl rounded-2xl border border-slate-700 bg-slate-950 shadow-lg"
+        className="w-full max-w-5xl rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] shadow-lg"
       >
-        <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-[var(--pf-border)] px-6 py-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-400">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-primary)]">
               {isEditing ? "Edit Set" : "Create Set"}
             </p>
-            <h2 className="mt-1 text-lg font-semibold text-white">
+            <h2 className="mt-1 text-lg font-semibold text-[var(--pf-text)]">
               {isEditing ? "Update question file" : "New question file"}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-800 hover:text-white"
+            className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-3 py-2 text-sm font-semibold text-[var(--pf-muted)] hover:bg-[var(--pf-panel-soft)] hover:text-[var(--pf-text)]"
           >
             Close
           </button>
@@ -171,27 +171,27 @@ function QuestionSetModal({ initialSet, saving, onClose, onSave }) {
         <div className="grid gap-6 px-6 py-7 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-5">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-500">
+              <label className="mb-2 block text-sm font-medium text-[var(--pf-muted)]">
                 Set name
               </label>
               <input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Amazon DSA Prep"
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-slate-600 focus:border-blue-500"
+                className="w-full rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 text-sm text-[var(--pf-text)] outline-none transition-colors placeholder:text-[var(--pf-muted)] focus:border-[var(--pf-primary)] focus:ring-4 focus:ring-lavender-300/50"
               />
             </div>
 
             <div>
               <div className="mb-2 flex items-center justify-between gap-3">
-                <label className="block text-sm font-medium text-slate-500">
+                <label className="block text-sm font-medium text-[var(--pf-muted)]">
                   Questions
                 </label>
                 <span
                   className={`text-xs font-medium ${
                     parsedQuestions.length > MAX_QUESTIONS
-                      ? "text-red-400"
-                      : "text-slate-500"
+                      ? "text-[var(--pf-danger)]"
+                      : "text-[var(--pf-muted)]"
                   }`}
                 >
                   {parsedQuestions.length}/{MAX_QUESTIONS}
@@ -202,30 +202,30 @@ function QuestionSetModal({ initialSet, saving, onClose, onSave }) {
                 onChange={(event) => setRawQuestions(event.target.value)}
                 placeholder="Paste questions here, one per line."
                 rows={18}
-                className="w-full resize-y rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm leading-6 text-white outline-none transition-colors placeholder:text-slate-600 focus:border-blue-500"
+                className="w-full resize-y rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 text-sm leading-6 text-[var(--pf-text)] outline-none transition-colors placeholder:text-[var(--pf-muted)] focus:border-[var(--pf-primary)] focus:ring-4 focus:ring-lavender-300/50"
               />
             </div>
 
             {error && (
-              <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-[var(--pf-danger)]">
                 {error}
               </div>
             )}
           </div>
 
-          <aside className="rounded-lg border border-slate-700 bg-slate-900 p-5 shadow-lg">
+          <aside className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] p-5 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-[var(--pf-text)]">
                 Live preview
               </h3>
-              <span className="rounded-full border border-slate-700 bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-500">
+              <span className="rounded-full border border-[var(--pf-border)] bg-[var(--pf-panel)] px-2.5 py-1 text-xs font-medium text-[var(--pf-muted)]">
                 {parsedQuestions.length} questions
               </span>
             </div>
 
             {parsedQuestions.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-700 px-4 py-10 text-center">
-                <p className="text-sm text-slate-400">
+              <div className="rounded-lg border border-dashed border-[var(--pf-border)] px-4 py-10 text-center">
+                <p className="text-sm text-[var(--pf-muted)]">
                   Parsed questions will appear here as you paste them.
                 </p>
               </div>
@@ -234,18 +234,18 @@ function QuestionSetModal({ initialSet, saving, onClose, onSave }) {
                 {parsedQuestions.slice(0, MAX_QUESTIONS).map((question, index) => (
                   <div
                     key={`${question}-${index}`}
-                    className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                    className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-page)] px-3 py-2"
                   >
-                    <p className="text-xs font-semibold text-slate-500">
+                    <p className="text-xs font-semibold text-[var(--pf-muted)]">
                       Q{index + 1}
                     </p>
-                    <p className="mt-1 text-sm leading-5 text-slate-600">
+                    <p className="mt-1 text-sm leading-5 text-[var(--pf-text-secondary)]">
                       {question}
                     </p>
                   </div>
                 ))}
                 {parsedQuestions.length > MAX_QUESTIONS && (
-                  <p className="px-1 text-xs text-red-300">
+                  <p className="px-1 text-xs text-[var(--pf-danger)]">
                     Remove {parsedQuestions.length - MAX_QUESTIONS} questions
                     before saving.
                   </p>
@@ -255,11 +255,11 @@ function QuestionSetModal({ initialSet, saving, onClose, onSave }) {
           </aside>
         </div>
 
-        <div className="flex flex-col-reverse gap-3 border-t border-slate-700 px-6 py-4 sm:flex-row sm:justify-end">
+        <div className="flex flex-col-reverse gap-3 border-t border-[var(--pf-border)] px-6 py-4 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-500 hover:bg-slate-800 hover:text-white"
+            className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 text-sm font-semibold text-[var(--pf-muted)] hover:bg-[var(--pf-panel-soft)] hover:text-[var(--pf-text)]"
           >
             Cancel
           </button>
@@ -268,8 +268,8 @@ function QuestionSetModal({ initialSet, saving, onClose, onSave }) {
             disabled={saving}
             className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
               saving
-                ? "bg-slate-800 text-slate-500"
-                : "bg-blue-600 text-white hover:bg-blue-500"
+                ? "bg-[var(--pf-panel-soft)] text-[var(--pf-muted)]"
+                : "bg-[var(--pf-primary)] text-white hover:bg-[var(--pf-primary-dark)]"
             }`}
           >
             {saving ? "Saving..." : isEditing ? "Save Changes" : "Create Set"}
@@ -282,17 +282,17 @@ function QuestionSetModal({ initialSet, saving, onClose, onSave }) {
 
 function QuestionSetCard({ questionSet, onEdit, onDelete, onStart }) {
   return (
-    <section className="rounded-lg border border-slate-700 bg-slate-900 p-6 shadow-lg transition-all hover:-translate-y-0.5">
+    <section className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] p-6 shadow-lg transition-all hover:-translate-y-0.5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-lg font-semibold text-[var(--pf-text)]">
             {questionSet.name}
           </h2>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-[var(--pf-muted)]">
             Created {formatDate(questionSet.created_at)}
           </p>
         </div>
-        <span className="rounded-full border border-blue-800 bg-blue-950 px-2.5 py-1 text-xs font-medium text-blue-400">
+        <span className="rounded-full border border-[var(--pf-border)] bg-[var(--pf-primary-light)] px-2.5 py-1 text-xs font-medium text-[var(--pf-primary)]">
           {questionSet.questions.length} questions
         </span>
       </div>
@@ -301,12 +301,12 @@ function QuestionSetCard({ questionSet, onEdit, onDelete, onStart }) {
         {questionSet.questions.slice(0, 3).map((question, index) => (
           <div
             key={question.id || `${question.question_text}-${index}`}
-            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+            className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-page)] px-3 py-2"
           >
-            <p className="text-xs font-medium text-slate-500">
+            <p className="text-xs font-medium text-[var(--pf-muted)]">
               Preview {index + 1}
             </p>
-            <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-600">
+            <p className="mt-1 line-clamp-2 text-sm leading-5 text-[var(--pf-text-secondary)]">
               {question.question_text}
             </p>
           </div>
@@ -316,19 +316,19 @@ function QuestionSetCard({ questionSet, onEdit, onDelete, onStart }) {
       <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
         <button
           onClick={() => onStart(questionSet)}
-          className="rounded-lg bg-blue-600 px-3 py-3 text-sm font-bold text-white hover:bg-blue-500"
+          className="rounded-lg bg-[var(--pf-primary)] px-3 py-3 text-sm font-bold text-white hover:bg-[var(--pf-primary-dark)]"
         >
           Start Interview
         </button>
         <button
           onClick={() => onEdit(questionSet)}
-          className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-700"
+          className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-3 py-3 text-sm font-semibold text-[var(--pf-text)] hover:bg-[var(--pf-primary-light)]"
         >
           Edit
         </button>
         <button
           onClick={() => onDelete(questionSet)}
-          className="rounded-lg border border-red-900/60 bg-red-950/30 px-3 py-3 text-sm font-semibold text-red-300 hover:bg-red-950/50"
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm font-semibold text-[var(--pf-danger)] hover:bg-red-100"
         >
           Delete
         </button>
@@ -489,59 +489,59 @@ function Questions() {
       <div className="px-6 py-8 md:px-8 md:py-10">
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-wider text-blue-400">
+            <p className="text-sm font-semibold uppercase tracking-wider text-[var(--pf-primary)]">
               Question Bank
             </p>
-            <h1 className="mt-2 text-2xl font-bold text-white">
+            <h1 className="mt-2 text-2xl font-bold text-[var(--pf-text)]">
               Build reusable interview question files
             </h1>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
+            <p className="mt-2 text-sm leading-6 text-[var(--pf-muted)]">
               Paste your own prompts, keep them organized, and run AI-powered
               interview sessions from any saved set.
             </p>
           </div>
           <button
             onClick={openCreateModal}
-            className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-500"
+            className="rounded-lg bg-[var(--pf-primary)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--pf-primary-dark)]"
           >
             Create New Set
           </button>
         </div>
 
         {error && (
-          <div className="mb-5 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+          <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-[var(--pf-danger)]">
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="rounded-lg border border-slate-700 bg-slate-900 px-6 py-14 text-center shadow-lg">
-            <p className="text-sm font-medium text-white">
+          <div className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-6 py-14 text-center shadow-lg">
+            <p className="text-sm font-medium text-[var(--pf-text)]">
               Loading question sets...
             </p>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-[var(--pf-muted)]">
               Your saved files will appear here.
             </p>
           </div>
         ) : questionSets.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/80 px-6 py-14 text-center shadow-lg">
-            <h2 className="text-lg font-semibold text-white">
+          <div className="rounded-lg border border-dashed border-[var(--pf-border)] bg-white/85 px-6 py-14 text-center shadow-lg">
+            <h2 className="text-lg font-semibold text-[var(--pf-text)]">
               No question sets yet
             </h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--pf-muted)]">
               Create a set once, then reuse it from here or from interview
               setup whenever you practice.
             </p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <button
                 onClick={openCreateModal}
-                className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500"
+                className="rounded-lg bg-[var(--pf-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--pf-primary-dark)]"
               >
                 Create New Set
               </button>
               <Link
                 to="/interview/setup"
-                className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-700"
+                className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 text-sm font-semibold text-[var(--pf-text)] hover:bg-[var(--pf-primary-light)]"
               >
                 Go to Setup
               </Link>

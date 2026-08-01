@@ -32,14 +32,14 @@ function formatLabel(value) {
 function ScoreBar({ label, score }) {
   const percentage = (score / 10) * 100;
   const color =
-    score >= 7 ? "bg-green-500" : score >= 4 ? "bg-yellow-500" : "bg-red-500";
+    score >= 7 ? "bg-[var(--pf-success)]" : score >= 4 ? "bg-[var(--pf-warning)]" : "bg-[var(--pf-danger)]";
   return (
     <div className="mb-3">
       <div className="flex justify-between mb-1">
-        <span className="text-slate-500 text-sm font-medium">{label}</span>
-        <span className="text-white text-sm font-semibold">{score}/10</span>
+        <span className="text-[var(--pf-muted)] text-sm font-medium">{label}</span>
+        <span className="text-[var(--pf-text)] text-sm font-semibold">{score}/10</span>
       </div>
-      <div className="h-2 w-full rounded-full bg-slate-800 shadow-inner">
+      <div className="h-2 w-full rounded-full bg-[var(--pf-panel-soft)] shadow-inner">
         <div
           className={`h-2 rounded-full transition-all duration-700 ${color}`}
           style={{ width: `${percentage}%` }}
@@ -200,12 +200,12 @@ function InterviewFeedback() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="rounded-2xl border border-slate-700 bg-slate-900 p-8 text-center shadow-lg">
+          <div className="rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-8 text-center shadow-lg">
             <div className="text-4xl mb-4 animate-pulse">📊</div>
-            <p className="text-white font-medium">
+            <p className="text-[var(--pf-text)] font-medium">
               Analysing your interview...
             </p>
-            <p className="text-slate-500 text-sm mt-1">
+            <p className="text-[var(--pf-muted)] text-sm mt-1">
               Reviewing your answers and preparing feedback
             </p>
           </div>
@@ -218,12 +218,12 @@ function InterviewFeedback() {
     return (
       <DashboardLayout>
         <div className="px-6 py-8 md:px-8 md:py-10 max-w-3xl">
-          <div className="px-4 py-3 bg-red-900/20 border border-red-800/40 rounded-lg text-red-400 text-sm mb-4">
+          <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-[var(--pf-danger)] text-sm mb-4">
             {error}
           </div>
           <button
             onClick={() => navigate("/interview/setup")}
-            className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500"
+            className="rounded-lg bg-[var(--pf-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--pf-primary-dark)]"
           >
             Back to Setup
           </button>
@@ -236,19 +236,19 @@ function InterviewFeedback() {
     <DashboardLayout>
       <div className="px-6 py-8 md:px-8 md:py-10 max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Interview Feedback</h1>
-          <p className="text-slate-500 text-sm mt-1 capitalize">
+          <h1 className="text-2xl font-bold text-[var(--pf-text)]">Interview Feedback</h1>
+          <p className="text-[var(--pf-muted)] text-sm mt-1 capitalize">
             {formatLabel(mode)}
             {mode !== "custom" && difficulty
               ? ` / ${formatLabel(difficulty)}`
               : ""}
             {subjectSummary ? ` / ${subjectSummary}` : ""}
-            {saved && <span className="ml-2 text-green-400">/ Saved</span>}
+            {saved && <span className="ml-2 text-[var(--pf-success)]">/ Saved</span>}
           </p>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg">
-          <h2 className="text-white font-semibold mb-4">Overall Scores</h2>
+        <div className="mb-6 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-7 shadow-lg">
+          <h2 className="text-[var(--pf-text)] font-semibold mb-4">Overall Scores</h2>
           <ScoreBar label={knowledgeLabel} score={feedback.overallTechScore} />
           <ScoreBar label="Communication" score={feedback.overallCommScore} />
           <ScoreBar
@@ -257,33 +257,33 @@ function InterviewFeedback() {
           />
         </div>
 
-        <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg">
-          <h2 className="text-white font-semibold mb-2">Summary</h2>
-          <p className="text-slate-600 text-sm leading-relaxed">
+        <div className="mb-6 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-7 shadow-lg">
+          <h2 className="text-[var(--pf-text)] font-semibold mb-2">Summary</h2>
+          <p className="text-[var(--pf-text-secondary)] text-sm leading-relaxed">
             {feedback.summary}
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg">
-            <h2 className="text-green-400 font-semibold mb-3">
+          <div className="rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-7 shadow-lg">
+            <h2 className="text-[var(--pf-success)] font-semibold mb-3">
               ✅ What Went Well
             </h2>
             <ul className="space-y-2">
               {feedback.whatWentWell.map((item, i) => (
-                <li key={i} className="text-slate-600 text-sm">
+                <li key={i} className="text-[var(--pf-text-secondary)] text-sm">
                   • {item}
                 </li>
               ))}
             </ul>
           </div>
-          <div className="rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg">
-            <h2 className="text-yellow-400 font-semibold mb-3">
+          <div className="rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-7 shadow-lg">
+            <h2 className="text-[var(--pf-warning)] font-semibold mb-3">
               ⚠️ Areas to Improve
             </h2>
             <ul className="space-y-2">
               {feedback.areasToImprove.map((item, i) => (
-                <li key={i} className="text-slate-600 text-sm">
+                <li key={i} className="text-[var(--pf-text-secondary)] text-sm">
                   • {item}
                 </li>
               ))}
@@ -291,13 +291,13 @@ function InterviewFeedback() {
           </div>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg">
-          <h2 className="text-blue-400 font-semibold mb-3">
+        <div className="mb-6 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-7 shadow-lg">
+          <h2 className="text-[var(--pf-primary)] font-semibold mb-3">
             📚 Study Suggestions
           </h2>
           <ul className="space-y-2">
             {feedback.studySuggestions.map((item, i) => (
-              <li key={i} className="text-slate-600 text-sm">
+              <li key={i} className="text-[var(--pf-text-secondary)] text-sm">
                 • {item}
               </li>
             ))}
@@ -305,47 +305,47 @@ function InterviewFeedback() {
         </div>
 
         <div className="mb-8">
-          <h2 className="text-white font-semibold mb-4">
+          <h2 className="text-[var(--pf-text)] font-semibold mb-4">
             Per-Question Breakdown
           </h2>
           <div className="space-y-4">
             {feedback.perQuestion.map((q, i) => (
               <div
                 key={i}
-                className="rounded-2xl border border-slate-700 bg-slate-900 p-7 shadow-lg"
+                className="rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-7 shadow-lg"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-slate-400 text-sm font-medium">
+                  <span className="text-[var(--pf-muted)] text-sm font-medium">
                     Question {i + 1}
                   </span>
-                  <div className="flex gap-3 text-xs text-slate-400">
+                  <div className="flex gap-3 text-xs text-[var(--pf-muted)]">
                     <span>
-                      Tech: <span className="text-white">{q.techScore}/10</span>
+                      Tech: <span className="text-[var(--pf-text)]">{q.techScore}/10</span>
                     </span>
                     <span>
-                      Comm: <span className="text-white">{q.commScore}/10</span>
+                      Comm: <span className="text-[var(--pf-text)]">{q.commScore}/10</span>
                     </span>
                     <span>
                       Complete:{" "}
-                      <span className="text-white">
+                      <span className="text-[var(--pf-text)]">
                         {q.completenessScore}/10
                       </span>
                     </span>
                   </div>
                 </div>
-                <p className="text-white text-sm font-medium mb-3">
+                <p className="text-[var(--pf-text)] text-sm font-medium mb-3">
                   {answers[i]?.question}
                 </p>
-                <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3">
-                  <p className="text-slate-400 text-xs mb-1">Your answer</p>
-                  <p className="text-slate-600 text-sm">{answers[i]?.answer}</p>
+                <div className="mb-4 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3">
+                  <p className="text-[var(--pf-muted)] text-xs mb-1">Your answer</p>
+                  <p className="text-[var(--pf-text-secondary)] text-sm">{answers[i]?.answer}</p>
                 </div>
                 {q.wasSpoken && q.fillerWords && (
-                  <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-slate-400">
-                    <span className="rounded-full bg-slate-800 px-3 py-1">
+                  <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-[var(--pf-muted)]">
+                    <span className="rounded-full bg-[var(--pf-panel-soft)] px-3 py-1">
                       🎤 {q.wordsPerMinute ?? "--"} words/min
                     </span>
-                    <span className="rounded-full bg-slate-800 px-3 py-1">
+                    <span className="rounded-full bg-[var(--pf-panel-soft)] px-3 py-1">
                       Filler words: um {q.fillerWords.um} · uh{" "}
                       {q.fillerWords.uh} · like {q.fillerWords.like}
                     </span>
@@ -354,28 +354,28 @@ function InterviewFeedback() {
                 <div className="space-y-3">
                   {q.whatWentWell && (
                     <div>
-                      <p className="text-green-400 text-xs font-medium mb-1">
+                      <p className="text-[var(--pf-success)] text-xs font-medium mb-1">
                         ✅ What went well
                       </p>
-                      <p className="text-slate-600 text-sm">{q.whatWentWell}</p>
+                      <p className="text-[var(--pf-text-secondary)] text-sm">{q.whatWentWell}</p>
                     </div>
                   )}
                   {q.whatWasMissed && (
                     <div>
-                      <p className="text-yellow-400 text-xs font-medium mb-1">
+                      <p className="text-[var(--pf-warning)] text-xs font-medium mb-1">
                         ⚠️ What was missed
                       </p>
-                      <p className="text-slate-600 text-sm">
+                      <p className="text-[var(--pf-text-secondary)] text-sm">
                         {q.whatWasMissed}
                       </p>
                     </div>
                   )}
                   {q.idealAnswer && (
                     <div>
-                      <p className="text-blue-400 text-xs font-medium mb-1">
+                      <p className="text-[var(--pf-primary)] text-xs font-medium mb-1">
                         💡 Ideal answer
                       </p>
-                      <p className="text-slate-600 text-sm">{q.idealAnswer}</p>
+                      <p className="text-[var(--pf-text-secondary)] text-sm">{q.idealAnswer}</p>
                     </div>
                   )}
                 </div>
@@ -388,13 +388,13 @@ function InterviewFeedback() {
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             onClick={handleDownloadPdf}
-            className="flex-1 rounded-xl border border-slate-700 bg-slate-900 py-4 text-sm font-semibold text-white shadow-lg transition-all hover:bg-slate-800"
+            className="flex-1 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-panel)] py-4 text-sm font-semibold text-[var(--pf-text)] shadow-lg transition-all hover:bg-[var(--pf-panel-soft)]"
           >
             Download PDF Report
           </button>
           <button
             onClick={() => navigate("/interview/setup")}
-            className="flex-1 rounded-xl bg-blue-600 py-4 text-sm font-bold text-white transition-all hover:bg-blue-500"
+            className="flex-1 rounded-xl bg-[var(--pf-primary)] py-4 text-sm font-bold text-white transition-all hover:bg-[var(--pf-primary-dark)]"
           >
             Start New Session →
           </button>
@@ -402,19 +402,19 @@ function InterviewFeedback() {
             <button
               onClick={() => saveResults(feedback)}
               disabled={saving}
-              className="flex-1 rounded-xl border border-green-600 bg-green-700 py-4 text-sm font-bold text-white transition-all hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex-1 rounded-xl border border-[var(--pf-success)] bg-[var(--pf-success)] py-4 text-sm font-bold text-white transition-all hover:bg-[#276b43] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving..." : "💾 Save Results"}
             </button>
           )}
           {saved && (
-            <div className="flex flex-1 items-center justify-center rounded-xl border border-slate-700 bg-slate-800 py-4 text-sm font-semibold text-green-400 transition-all">
+            <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--pf-border)] bg-[var(--pf-panel)] py-4 text-sm font-semibold text-[var(--pf-success)] transition-all">
               ✓ Saved
             </div>
           )}
           <button
             onClick={() => navigate("/dashboard")}
-            className="flex-1 rounded-xl border border-slate-700 bg-slate-800 py-4 text-sm font-semibold text-white transition-all hover:bg-slate-700"
+            className="flex-1 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-panel)] py-4 text-sm font-semibold text-[var(--pf-text)] transition-all hover:bg-[var(--pf-primary-light)]"
           >
             Back to Dashboard
           </button>

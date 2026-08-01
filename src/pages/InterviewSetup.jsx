@@ -45,19 +45,19 @@ const difficulties = [
     id: "easy",
     label: "Easy",
     desc: "Fresher level",
-    color: "border-green-700/50 bg-green-900/20 text-green-400",
+    color: "border-green-200 bg-green-50 text-[var(--pf-success)]",
   },
   {
     id: "medium",
     label: "Medium",
     desc: "Internship level",
-    color: "border-yellow-700/50 bg-yellow-900/20 text-yellow-400",
+    color: "border-amber-200 bg-amber-50 text-[var(--pf-warning)]",
   },
   {
     id: "hard",
     label: "Hard",
     desc: "Placement level",
-    color: "border-red-700/50 bg-red-900/20 text-red-400",
+    color: "border-red-200 bg-red-50 text-[var(--pf-danger)]",
   },
 ];
 
@@ -236,14 +236,14 @@ function InterviewSetup() {
     <DashboardLayout>
       <div className="px-6 py-8 md:px-8 md:py-10 max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Start a Session</h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-[var(--pf-text)]">Start a Session</h1>
+          <p className="text-[var(--pf-muted)] text-sm mt-1">
             Choose your interview type, source, and difficulty.
           </p>
         </div>
 
         <div className="mb-8">
-          <h2 className="text-slate-500 font-semibold mb-3 text-sm uppercase tracking-wider">
+          <h2 className="text-[var(--pf-muted)] font-semibold mb-3 text-sm uppercase tracking-wider">
             Interview Type
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -256,17 +256,17 @@ function InterviewSetup() {
                 }}
                 className={`text-left p-5 rounded-xl border shadow-lg transition-all hover:-translate-y-0.5 ${
                   selectedMode === mode.id
-                    ? "border-blue-500 bg-blue-900"
-                    : "border-slate-700 bg-slate-900 hover:border-blue-800"
+                    ? "border-[var(--pf-primary)] bg-[var(--pf-primary-light)]"
+                    : "border-[var(--pf-border)] bg-[var(--pf-panel)] hover:border-[var(--pf-border)]"
                 }`}
               >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-xs font-extrabold text-blue-400 shadow-lg">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--pf-panel-soft)] text-xs font-extrabold text-[var(--pf-primary)] shadow-lg">
                   {mode.icon}
                 </div>
-                <div className="text-white font-medium text-sm">
+                <div className="text-[var(--pf-text)] font-medium text-sm">
                   {mode.label}
                 </div>
-                <div className="text-slate-500 text-xs mt-1">{mode.desc}</div>
+                <div className="text-[var(--pf-muted)] text-xs mt-1">{mode.desc}</div>
               </button>
             ))}
           </div>
@@ -274,10 +274,10 @@ function InterviewSetup() {
 
         {needsSubject && (
           <div className="mb-8">
-            <h2 className="text-slate-500 font-semibold mb-3 text-sm uppercase tracking-wider">
+            <h2 className="text-[var(--pf-muted)] font-semibold mb-3 text-sm uppercase tracking-wider">
               Subjects
             </h2>
-            <p className="text-slate-500 text-xs mb-3">
+            <p className="text-[var(--pf-muted)] text-xs mb-3">
               Choose one or more areas. The interview will balance coverage
               across them.
             </p>
@@ -288,8 +288,8 @@ function InterviewSetup() {
                   onClick={() => toggleSubject(sub.id)}
                   className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
                     selectedSubjects.includes(sub.id)
-                      ? "border-blue-500 bg-blue-900 text-blue-600 shadow-lg"
-                      : "border-slate-700 bg-slate-900 text-slate-500 hover:border-blue-800 hover:text-white"
+                      ? "border-[var(--pf-primary)] bg-[var(--pf-primary-light)] text-[var(--pf-primary)] shadow-lg"
+                      : "border-[var(--pf-border)] bg-[var(--pf-panel)] text-[var(--pf-muted)] hover:border-[var(--pf-border)] hover:text-[var(--pf-text)]"
                   }`}
                 >
                   {sub.label}
@@ -297,7 +297,7 @@ function InterviewSetup() {
               ))}
             </div>
             {selectedSubjects.length > 0 && (
-              <p className="text-slate-500 text-xs mt-3">
+              <p className="text-[var(--pf-muted)] text-xs mt-3">
                 {selectedSubjects.length} subject
                 {selectedSubjects.length > 1 ? "s" : ""} selected
               </p>
@@ -307,10 +307,10 @@ function InterviewSetup() {
 
         {needsCommunicationMode && (
           <div className="mb-8">
-            <h2 className="text-slate-500 font-semibold mb-3 text-sm uppercase tracking-wider">
+            <h2 className="text-[var(--pf-muted)] font-semibold mb-3 text-sm uppercase tracking-wider">
               Communication Mode
             </h2>
-            <p className="text-slate-500 text-xs mb-3">
+            <p className="text-[var(--pf-muted)] text-xs mb-3">
               Pick the kind of speaking challenge you want to practice.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -320,14 +320,14 @@ function InterviewSetup() {
                   onClick={() => setSelectedCommunicationMode(item.id)}
                   className={`text-left p-5 rounded-xl border shadow-lg transition-all hover:-translate-y-0.5 ${
                     selectedCommunicationMode === item.id
-                      ? "border-cyan-500 bg-cyan-900"
-                      : "border-slate-700 bg-slate-900 hover:border-blue-800"
+                      ? "border-[var(--pf-primary)] bg-[var(--pf-primary-light)]"
+                      : "border-[var(--pf-border)] bg-[var(--pf-panel)] hover:border-[var(--pf-border)]"
                   }`}
                 >
-                  <div className="text-white font-medium text-sm">
+                  <div className="text-[var(--pf-text)] font-medium text-sm">
                     {item.label}
                   </div>
-                  <div className="text-slate-500 text-xs mt-1">
+                  <div className="text-[var(--pf-muted)] text-xs mt-1">
                     {item.desc}
                   </div>
                 </button>
@@ -338,25 +338,25 @@ function InterviewSetup() {
 
         {needsCustomSet && (
           <div className="mb-8">
-            <h2 className="text-slate-500 font-semibold mb-3 text-sm uppercase tracking-wider">
+            <h2 className="text-[var(--pf-muted)] font-semibold mb-3 text-sm uppercase tracking-wider">
               Question Set
             </h2>
             {questionSetsLoading ? (
-              <div className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-4 text-sm text-slate-500 shadow-lg">
+              <div className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-4 text-sm text-[var(--pf-muted)] shadow-lg">
                 Loading saved question sets...
               </div>
             ) : questionSetError ? (
-              <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-[var(--pf-danger)]">
                 {questionSetError}
               </div>
             ) : questionSets.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/80 px-4 py-5 shadow-lg">
-                <p className="text-sm text-slate-500">
+              <div className="rounded-lg border border-dashed border-[var(--pf-border)] bg-white/85 px-4 py-5 shadow-lg">
+                <p className="text-sm text-[var(--pf-muted)]">
                   Create a question set before starting a custom interview.
                 </p>
                 <Link
                   to="/questions"
-                  className="mt-3 inline-flex rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500"
+                  className="mt-3 inline-flex rounded-lg bg-[var(--pf-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--pf-primary-dark)]"
                 >
                   Open Question Bank
                 </Link>
@@ -368,7 +368,7 @@ function InterviewSetup() {
                   onChange={(event) =>
                     setSelectedQuestionSetId(event.target.value)
                   }
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-blue-500"
+                  className="w-full rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 text-sm text-[var(--pf-text)] outline-none transition-colors focus:border-[var(--pf-primary)] focus:ring-4 focus:ring-lavender-300/50"
                 >
                   {questionSets.map((set) => (
                     <option key={set.id} value={set.id}>
@@ -378,7 +378,7 @@ function InterviewSetup() {
                 </select>
                 {selectedQuestionSet && (
                   <div className="mt-4">
-                    <label className="mb-2 block text-sm font-medium text-slate-500">
+                    <label className="mb-2 block text-sm font-medium text-[var(--pf-muted)]">
                       Questions to practice
                     </label>
                     <input
@@ -389,9 +389,9 @@ function InterviewSetup() {
                       onChange={(event) =>
                         setCustomQuestionCount(event.target.value)
                       }
-                      className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-blue-500"
+                      className="w-full rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 text-sm text-[var(--pf-text)] outline-none transition-colors focus:border-[var(--pf-primary)] focus:ring-4 focus:ring-lavender-300/50"
                     />
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-[var(--pf-muted)]">
                       The interview will ask {requestedCustomQuestionCount}{" "}
                       random question
                       {requestedCustomQuestionCount === 1 ? "" : "s"} from{" "}
@@ -406,7 +406,7 @@ function InterviewSetup() {
 
         {needsDifficulty && (
           <div className="mb-8">
-            <h2 className="text-slate-500 font-semibold mb-3 text-sm uppercase tracking-wider">
+            <h2 className="text-[var(--pf-muted)] font-semibold mb-3 text-sm uppercase tracking-wider">
               Difficulty
             </h2>
             <div className="flex gap-3">
@@ -417,13 +417,13 @@ function InterviewSetup() {
                   className={`flex-1 p-5 rounded-xl border shadow-lg transition-all hover:-translate-y-0.5 ${
                     selectedDifficulty === diff.id
                       ? diff.color + " border-opacity-100"
-                      : "border-slate-700 bg-slate-900 hover:border-blue-800"
+                      : "border-[var(--pf-border)] bg-[var(--pf-panel)] hover:border-[var(--pf-border)]"
                   }`}
                 >
-                  <div className="text-white font-medium text-sm">
+                  <div className="text-[var(--pf-text)] font-medium text-sm">
                     {diff.label}
                   </div>
-                  <div className="text-slate-500 text-xs mt-1">
+                  <div className="text-[var(--pf-muted)] text-xs mt-1">
                     {diff.desc}
                   </div>
                 </button>
@@ -434,7 +434,7 @@ function InterviewSetup() {
 
         {needsRole && (
           <div className="mb-8">
-            <h2 className="text-slate-500 font-semibold mb-3 text-sm uppercase tracking-wider">
+            <h2 className="text-[var(--pf-muted)] font-semibold mb-3 text-sm uppercase tracking-wider">
               Target Role
             </h2>
             <div className="flex flex-wrap gap-2">
@@ -444,8 +444,8 @@ function InterviewSetup() {
                   onClick={() => setSelectedRole(role.id)}
                   className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
                     selectedRole === role.id
-                      ? "border-blue-500 bg-blue-900 text-white shadow-lg"
-                      : "border-slate-700 bg-slate-900 text-slate-500 hover:border-blue-800 hover:text-white"
+                      ? "border-[var(--pf-primary)] bg-[var(--pf-primary-light)] text-[var(--pf-text)] shadow-lg"
+                      : "border-[var(--pf-border)] bg-[var(--pf-panel)] text-[var(--pf-muted)] hover:border-[var(--pf-border)] hover:text-[var(--pf-text)]"
                   }`}
                 >
                   {role.label}
@@ -457,7 +457,7 @@ function InterviewSetup() {
 
         {needsQuestionRange && (
           <div className="mb-8">
-            <h2 className="text-slate-500 font-semibold mb-3 text-sm uppercase tracking-wider">
+            <h2 className="text-[var(--pf-muted)] font-semibold mb-3 text-sm uppercase tracking-wider">
               Question Range
             </h2>
             <div className="flex gap-3">
@@ -467,14 +467,14 @@ function InterviewSetup() {
                   onClick={() => setSelectedQuestionRange(range.id)}
                   className={`flex-1 p-5 rounded-xl border shadow-lg transition-all hover:-translate-y-0.5 ${
                     selectedQuestionRange === range.id
-                      ? "border-blue-500 bg-blue-900"
-                      : "border-slate-700 bg-slate-900 hover:border-blue-800"
+                      ? "border-[var(--pf-primary)] bg-[var(--pf-primary-light)]"
+                      : "border-[var(--pf-border)] bg-[var(--pf-panel)] hover:border-[var(--pf-border)]"
                   }`}
                 >
-                  <div className="text-white font-medium text-sm">
+                  <div className="text-[var(--pf-text)] font-medium text-sm">
                     {range.label}
                   </div>
-                  <div className="text-slate-500 text-xs mt-1">
+                  <div className="text-[var(--pf-muted)] text-xs mt-1">
                     {range.desc}
                   </div>
                 </button>
@@ -488,8 +488,8 @@ function InterviewSetup() {
           disabled={!canStart}
           className={`w-full rounded-xl py-4 text-sm font-bold shadow-lg transition-all ${
             canStart
-              ? "bg-blue-600 hover:bg-blue-500 text-white"
-              : "bg-slate-800 text-slate-600 cursor-not-allowed"
+              ? "bg-[var(--pf-primary)] hover:bg-[var(--pf-primary-dark)] text-white"
+              : "bg-[var(--pf-panel-soft)] text-[var(--pf-text-secondary)] cursor-not-allowed"
           }`}
         >
           {canStart ? "Start Interview" : "Select all options to continue"}

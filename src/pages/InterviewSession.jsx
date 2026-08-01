@@ -577,12 +577,12 @@ function InterviewSession() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="rounded-2xl border border-slate-700 bg-slate-900 p-8 text-center shadow-lg">
+          <div className="rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-8 text-center shadow-lg">
             <div className="text-4xl mb-4 animate-pulse">🤔</div>
-            <p className="text-white font-medium">
+            <p className="text-[var(--pf-text)] font-medium">
               Preparing your questions...
             </p>
-            <p className="text-slate-500 text-sm mt-1">
+            <p className="text-[var(--pf-muted)] text-sm mt-1">
               Preparing a personalised interview for you
             </p>
           </div>
@@ -595,24 +595,24 @@ function InterviewSession() {
     return (
       <DashboardLayout>
         <div className="flex min-h-screen items-center justify-center px-6">
-          <div className="w-full max-w-lg rounded-2xl border border-red-900 bg-slate-900 p-6 shadow-lg">
-            <p className="text-xs font-semibold uppercase tracking-wider text-red-400">
+          <div className="w-full max-w-lg rounded-2xl border border-red-200 bg-[var(--pf-panel)] p-6 shadow-lg">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-danger)]">
               Interview could not start
             </p>
-            <h1 className="mt-2 text-2xl font-bold text-white">
+            <h1 className="mt-2 text-2xl font-bold text-[var(--pf-text)]">
               Questions did not load.
             </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{error}</p>
+            <p className="mt-3 text-sm leading-6 text-[var(--pf-text-secondary)]">{error}</p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={retryLoadingQuestions}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500"
+                className="flex-1 rounded-lg bg-[var(--pf-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--pf-primary-dark)]"
               >
                 Retry
               </button>
               <button
                 onClick={() => navigate("/interview/setup")}
-                className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700"
+                className="flex-1 rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 text-sm font-semibold text-[var(--pf-text)] hover:bg-[var(--pf-primary-light)]"
               >
                 Back to setup
               </button>
@@ -629,64 +629,64 @@ function InterviewSession() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <p className="text-slate-500 text-sm capitalize">
+            <p className="text-[var(--pf-muted)] text-sm capitalize">
               {formatLabel(mode)}
               {mode !== "custom" ? ` / ${formatLabel(sessionDifficulty)}` : ""}
               {sessionContextLabel ? ` / ${sessionContextLabel}` : ""}
             </p>
           </div>
-          <span className="text-slate-500 text-sm">
+          <span className="text-[var(--pf-muted)] text-sm">
             Question {currentIndex + 1} of {totalQuestions}
             {isFollowup && (
-              <span className="ml-2 text-yellow-400 text-xs">(follow-up)</span>
+              <span className="ml-2 text-[var(--pf-warning)] text-xs">(follow-up)</span>
             )}
           </span>
         </div>
 
-        <div className="mb-6 rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-lg">
+        <div className="mb-6 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-6 shadow-lg">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-500">
+            <span className="text-sm font-medium text-[var(--pf-muted)]">
               Time remaining
             </span>
             <span
               className={`text-sm font-bold ${
-                timeLeft <= 20 ? "text-red-400" : "text-white"
+                timeLeft <= 20 ? "text-[var(--pf-danger)]" : "text-[var(--pf-text)]"
               }`}
               aria-live="polite"
             >
               {formatTime(timeLeft)}
             </span>
           </div>
-          <div className="h-2.5 w-full rounded-full bg-slate-800 shadow-inner">
+          <div className="h-2.5 w-full rounded-full bg-[var(--pf-panel-soft)] shadow-inner">
             <div
               className={`h-2.5 rounded-full transition-all duration-500 ${
                 timeLeft <= 20
-                  ? "bg-red-500"
+                  ? "bg-[var(--pf-danger)]"
                   : timeLeft <= 45
-                    ? "bg-yellow-500"
-                    : "bg-blue-500"
+                    ? "bg-[var(--pf-warning)]"
+                    : "bg-[var(--pf-primary)]"
               }`}
               style={{
                 width: `${timeLimit > 0 ? (timeLeft / timeLimit) * 100 : 0}%`,
               }}
             />
           </div>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-[var(--pf-muted)]">
             The answer will auto-submit when the timer reaches zero.
           </p>
         </div>
 
         {/* Progress Bar */}
-        <div className="mb-8 h-2 w-full rounded-full bg-slate-800 shadow-inner">
+        <div className="mb-8 h-2 w-full rounded-full bg-[var(--pf-panel-soft)] shadow-inner">
           <div
-            className="h-2 rounded-full bg-blue-500 transition-all duration-500"
+            className="h-2 rounded-full bg-[var(--pf-primary)] transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
 
         {/* Question Card */}
-        <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-900 p-8 shadow-lg">
-          <p className="text-white text-lg font-medium leading-relaxed">
+        <div className="mb-6 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-8 shadow-lg">
+          <p className="text-[var(--pf-text)] text-lg font-medium leading-relaxed">
             {currentQuestion}
           </p>
         </div>
@@ -694,17 +694,17 @@ function InterviewSession() {
         {/* Answer Input */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-slate-500 text-sm">Your Answer</label>
+            <label className="text-[var(--pf-muted)] text-sm">Your Answer</label>
             {isSupported && (
               <button
                 onClick={handleMicToggle}
                 disabled={isMicConnecting}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   isMicConnecting
-                    ? "bg-yellow-900/30 text-yellow-400 border border-yellow-700/50 cursor-not-allowed"
+                    ? "bg-amber-50 text-[var(--pf-warning)] border border-amber-200 cursor-not-allowed"
                     : isListening
-                      ? "bg-red-900/30 text-red-400 border border-red-700/50"
-                      : "bg-slate-800 text-slate-500 border border-slate-700 hover:text-white"
+                      ? "bg-red-50 text-[var(--pf-danger)] border border-red-200"
+                      : "bg-[var(--pf-panel-soft)] text-[var(--pf-muted)] border border-[var(--pf-border)] hover:text-[var(--pf-text)]"
                 }`}
               >
                 {isMicConnecting
@@ -717,13 +717,13 @@ function InterviewSession() {
           </div>
 
           {USE_DEEPGRAM && useWebSpeechFallback && (
-            <p className="mb-2 text-xs text-yellow-400">
+            <p className="mb-2 text-xs text-[var(--pf-warning)]">
               Voice recognition switched to browser mode.
             </p>
           )}
 
           {isListening && (
-            <div className="flex items-center gap-2 mb-2 text-xs text-red-400">
+            <div className="flex items-center gap-2 mb-2 text-xs text-[var(--pf-danger)]">
               <span className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
               Listening... speak clearly
             </div>
@@ -734,13 +734,13 @@ function InterviewSession() {
             onChange={(e) => setTextAnswer(e.target.value)}
             placeholder="Type your answer here, or use the microphone button above..."
             rows={5}
-            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm resize-none shadow-lg focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full bg-[var(--pf-panel)] border border-[var(--pf-border)] rounded-xl px-4 py-3 text-[var(--pf-text)] placeholder:text-[var(--pf-muted)] text-sm resize-none shadow-lg focus:outline-none focus:border-[var(--pf-primary)] focus:ring-4 focus:ring-lavender-300/50 transition-colors"
           />
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-4 px-4 py-3 bg-red-900/20 border border-red-800/40 rounded-lg text-red-400 text-sm">
+          <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-[var(--pf-danger)] text-sm">
             {error}
           </div>
         )}
@@ -751,8 +751,8 @@ function InterviewSession() {
           disabled={submitting || !textAnswer.trim()}
           className={`w-full rounded-xl py-4 text-sm font-bold shadow-lg transition-all ${
             submitting || !textAnswer.trim()
-              ? "bg-slate-800 text-slate-600 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-500 text-white"
+              ? "bg-[var(--pf-panel-soft)] text-[var(--pf-text-secondary)] cursor-not-allowed"
+              : "bg-[var(--pf-primary)] hover:bg-[var(--pf-primary-dark)] text-white"
           }`}
         >
           {primaryActionLabel}
@@ -763,8 +763,8 @@ function InterviewSession() {
           disabled={submitting}
           className={`mt-3 w-full rounded-xl border py-4 text-sm font-semibold transition-all ${
             submitting
-              ? "cursor-not-allowed border-slate-800 bg-slate-900 text-slate-600"
-              : "border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+              ? "cursor-not-allowed border-[#EAE2E8] bg-[var(--pf-panel)] text-[var(--pf-text-secondary)]"
+              : "border-[var(--pf-border)] bg-[var(--pf-panel)] text-[var(--pf-text)] hover:bg-[var(--pf-primary-light)]"
           }`}
         >
           Skip

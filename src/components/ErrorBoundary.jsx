@@ -18,28 +18,28 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
-          <div className="max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-7 text-center shadow-lg">
-            <p className="text-xs font-semibold uppercase tracking-wider text-red-400">
+        <div className="min-h-screen bg-[var(--pf-page)] flex items-center justify-center px-6">
+          <div className="max-w-md rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-7 text-center shadow-lg">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-danger)]">
               Something went wrong
             </p>
-            <h1 className="mt-2 text-2xl font-bold text-white">
+            <h1 className="mt-2 text-2xl font-bold text-[var(--pf-text)]">
               PrepForge hit a recoverable error.
             </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-500">
+            <p className="mt-3 text-sm leading-6 text-[var(--pf-muted)]">
               Refresh the page or return to the dashboard. The app is still
               running, and no destructive action was taken.
             </p>
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => window.location.reload()}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-500"
+                className="flex-1 rounded-lg bg-[var(--pf-primary)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--pf-primary-dark)]"
               >
                 Refresh
               </button>
               <Link
                 to="/dashboard"
-                className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700"
+                className="flex-1 rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3 text-sm font-semibold text-[var(--pf-text)] hover:bg-[var(--pf-primary-light)]"
               >
                 Dashboard
               </Link>

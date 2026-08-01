@@ -16,10 +16,10 @@ const roleOptions = [
 
 function StatTile({ label, value, hint }) {
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900 p-6 shadow-lg transition-all hover:-translate-y-0.5">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-2 text-4xl font-extrabold text-white">{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{hint}</p>
+    <div className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] p-6 shadow-lg transition-all hover:-translate-y-0.5">
+      <p className="text-sm text-[var(--pf-muted)]">{label}</p>
+      <p className="mt-2 text-4xl font-extrabold text-[var(--pf-text)]">{value}</p>
+      <p className="mt-1 text-xs text-[var(--pf-muted)]">{hint}</p>
     </div>
   );
 }
@@ -114,19 +114,19 @@ function Profile() {
     <DashboardLayout>
       <div className="px-6 py-8 md:px-8 md:py-10">
         <div className="mb-8">
-          <p className="text-sm font-semibold uppercase tracking-wider text-blue-400">
+          <p className="text-sm font-semibold uppercase tracking-wider text-[var(--pf-primary)]">
             Profile
           </p>
-          <h1 className="mt-2 text-2xl font-bold text-white">
+          <h1 className="mt-2 text-2xl font-bold text-[var(--pf-text)]">
             Your PrepForge identity
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-[var(--pf-muted)]">
             Keep your target role current so practice rounds stay relevant.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]">
-          <aside className="rounded-lg border border-slate-700 bg-slate-900 p-7 shadow-lg">
+          <aside className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] p-7 shadow-lg">
             <div className="flex items-center gap-4">
               {avatarUrl ? (
                 <img
@@ -135,34 +135,34 @@ function Profile() {
                   className="h-20 w-20 rounded-lg object-cover shadow-lg"
                 />
               ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-blue-600 text-2xl font-bold text-white">
+                <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[var(--pf-primary)] text-2xl font-bold text-white">
                   {initials}
                 </div>
               )}
               <div>
-                <h2 className="text-lg font-semibold text-white">
+                <h2 className="text-lg font-semibold text-[var(--pf-text)]">
                   {form.fullName || "PrepForge user"}
                 </h2>
-                <p className="mt-1 break-all text-sm text-slate-400">
+                <p className="mt-1 break-all text-sm text-[var(--pf-muted)]">
                   {user?.email}
                 </p>
               </div>
             </div>
 
-            <div className="mt-6 space-y-3 border-t border-slate-700 pt-5">
+            <div className="mt-6 space-y-3 border-t border-[var(--pf-border)] pt-5">
               <div>
-                <p className="text-xs uppercase tracking-wider text-slate-500">
+                <p className="text-xs uppercase tracking-wider text-[var(--pf-muted)]">
                   College
                 </p>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-[var(--pf-text-secondary)]">
                   {form.college || "Not added yet"}
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-slate-500">
+                <p className="text-xs uppercase tracking-wider text-[var(--pf-muted)]">
                   Target role
                 </p>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-[var(--pf-text-secondary)]">
                   {form.targetRole || "Not selected"}
                 </p>
               </div>
@@ -195,14 +195,14 @@ function Profile() {
 
             <form
               onSubmit={handleSubmit}
-              className="rounded-lg border border-slate-700 bg-slate-900 p-7 shadow-lg"
+              className="rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] p-7 shadow-lg"
             >
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-[var(--pf-text)]">
                 Edit profile
               </h2>
               <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-500">
+                  <span className="text-sm font-medium text-[var(--pf-muted)]">
                     Name
                   </span>
                   <input
@@ -213,13 +213,13 @@ function Profile() {
                         fullName: event.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-blue-500"
+                    className="mt-2 w-full rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-3 py-2.5 text-sm text-[var(--pf-text)] outline-none transition-colors focus:border-[var(--pf-primary)] focus:ring-4 focus:ring-lavender-300/50"
                     placeholder="Your name"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-500">
+                  <span className="text-sm font-medium text-[var(--pf-muted)]">
                     College
                   </span>
                   <input
@@ -230,13 +230,13 @@ function Profile() {
                         college: event.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-blue-500"
+                    className="mt-2 w-full rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-3 py-2.5 text-sm text-[var(--pf-text)] outline-none transition-colors focus:border-[var(--pf-primary)] focus:ring-4 focus:ring-lavender-300/50"
                     placeholder="College or university"
                   />
                 </label>
 
                 <label className="block md:col-span-2">
-                  <span className="text-sm font-medium text-slate-500">
+                  <span className="text-sm font-medium text-[var(--pf-muted)]">
                     Target role
                   </span>
                   <select
@@ -247,7 +247,7 @@ function Profile() {
                         targetRole: event.target.value,
                       }))
                     }
-                    className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-blue-500"
+                    className="mt-2 w-full rounded-lg border border-[var(--pf-border)] bg-[var(--pf-panel)] px-3 py-2.5 text-sm text-[var(--pf-text)] outline-none transition-colors focus:border-[var(--pf-primary)] focus:ring-4 focus:ring-lavender-300/50"
                   >
                     {roleOptions.map((role) => (
                       <option key={role} value={role}>
@@ -259,12 +259,12 @@ function Profile() {
               </div>
 
               {error && (
-                <div className="mt-5 rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+                <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-[var(--pf-danger)]">
                   {error}
                 </div>
               )}
               {message && (
-                <div className="mt-5 rounded-lg border border-green-800 bg-green-950/40 px-4 py-3 text-sm text-green-300">
+                <div className="mt-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-[var(--pf-success)]">
                   {message}
                 </div>
               )}
@@ -272,7 +272,7 @@ function Profile() {
               <button
                 type="submit"
                 disabled={saving}
-                className="mt-6 rounded-lg bg-blue-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
+                className="mt-6 rounded-lg bg-[var(--pf-primary)] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[var(--pf-primary-dark)] disabled:cursor-not-allowed disabled:bg-[var(--pf-panel-soft)] disabled:text-[var(--pf-muted)]"
               >
                 {saving ? "Saving..." : "Save profile"}
               </button>
