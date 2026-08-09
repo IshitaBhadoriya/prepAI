@@ -9,6 +9,7 @@ import {
   saveSessionFeedback,
 } from "../lib/database";
 import { downloadFeedbackPdf } from "../lib/pdfReport";
+import { getPacingLabel } from "../lib/speechMetrics";
 
 function formatLabel(value) {
   const labels = {
@@ -29,15 +30,45 @@ function formatLabel(value) {
     .join(" ");
 }
 
+function mergeFeedbackWithAnswers(feedback, answers = []) {
+  return {
+    ...feedback,
+    perQuestion: (feedback.perQuestion || []).map((item, index) => {
+      const answer = answers[index] || {};
+      return {
+        ...item,
+        question: answer.question ?? item.question ?? "",
+        userAnswer: answer.answer ?? item.userAnswer ?? "",
+        wasSpoken: Boolean(answer.wasSpoken ?? item.wasSpoken),
+        fillerWords: answer.fillerWords ?? item.fillerWords ?? null,
+        wordsPerMinute: answer.wordsPerMinute ?? item.wordsPerMinute ?? null,
+        longestPauseSeconds:
+          answer.longestPauseSeconds ?? item.longestPauseSeconds ?? null,
+        averagePauseSeconds:
+          answer.averagePauseSeconds ?? item.averagePauseSeconds ?? null,
+        repeatedPhrases: answer.repeatedPhrases ?? item.repeatedPhrases ?? [],
+      };
+    }),
+  };
+}
+
 function ScoreBar({ label, score }) {
   const percentage = (score / 10) * 100;
   const color =
-    score >= 7 ? "bg-[var(--pf-success)]" : score >= 4 ? "bg-[var(--pf-warning)]" : "bg-[var(--pf-danger)]";
+    score >= 7
+      ? "bg-[var(--pf-success)]"
+      : score >= 4
+        ? "bg-[var(--pf-warning)]"
+        : "bg-[var(--pf-danger)]";
   return (
     <div className="mb-3">
       <div className="flex justify-between mb-1">
-        <span className="text-[var(--pf-muted)] text-sm font-medium">{label}</span>
-        <span className="text-[var(--pf-text)] text-sm font-semibold">{score}/10</span>
+        <span className="text-[var(--pf-muted)] text-sm font-medium">
+          {label}
+        </span>
+        <span className="text-[var(--pf-text)] text-sm font-semibold">
+          {score}/10
+        </span>
       </div>
       <div className="h-2 w-full rounded-full bg-[var(--pf-panel-soft)] shadow-inner">
         <div
@@ -151,8 +182,9 @@ function InterviewFeedback() {
           difficulty,
           role,
         });
-        setFeedback(result);
-        void saveResults(result);
+        const enrichedResult = mergeFeedbackWithAnswers(result, answers);
+        setFeedback(enrichedResult);
+        void saveResults(enrichedResult);
       } catch (err) {
         console.error("FEEDBACK ERROR:", err);
         setError("Failed to generate feedback. Please try again.");
@@ -183,6 +215,8 @@ function InterviewFeedback() {
         : mode === "custom"
           ? "Answer Quality"
           : "Content Quality";
+  const knowledgeShortLabel =
+    mode === "communication" ? "Depth/Relevance:" : "Tech:";
 
   function handleDownloadPdf() {
     downloadFeedbackPdf({
@@ -236,19 +270,25 @@ function InterviewFeedback() {
     <DashboardLayout>
       <div className="px-6 py-8 md:px-8 md:py-10 max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--pf-text)]">Interview Feedback</h1>
+          <h1 className="text-2xl font-bold text-[var(--pf-text)]">
+            Interview Feedback
+          </h1>
           <p className="text-[var(--pf-muted)] text-sm mt-1 capitalize">
             {formatLabel(mode)}
             {mode !== "custom" && difficulty
               ? ` / ${formatLabel(difficulty)}`
               : ""}
             {subjectSummary ? ` / ${subjectSummary}` : ""}
-            {saved && <span className="ml-2 text-[var(--pf-success)]">/ Saved</span>}
+            {saved && (
+              <span className="ml-2 text-[var(--pf-success)]">/ Saved</span>
+            )}
           </p>
         </div>
 
         <div className="mb-6 rounded-2xl border border-[var(--pf-border)] bg-[var(--pf-panel)] p-7 shadow-lg">
-          <h2 className="text-[var(--pf-text)] font-semibold mb-4">Overall Scores</h2>
+          <h2 className="text-[var(--pf-text)] font-semibold mb-4">
+            Overall Scores
+          </h2>
           <ScoreBar label={knowledgeLabel} score={feedback.overallTechScore} />
           <ScoreBar label="Communication" score={feedback.overallCommScore} />
           <ScoreBar
@@ -320,10 +360,16 @@ function InterviewFeedback() {
                   </span>
                   <div className="flex gap-3 text-xs text-[var(--pf-muted)]">
                     <span>
-                      Tech: <span className="text-[var(--pf-text)]">{q.techScore}/10</span>
+                      {knowledgeShortLabel}{" "}
+                      <span className="text-[var(--pf-text)]">
+                        {q.techScore}/10
+                      </span>
                     </span>
                     <span>
-                      Comm: <span className="text-[var(--pf-text)]">{q.commScore}/10</span>
+                      Comm:{" "}
+                      <span className="text-[var(--pf-text)]">
+                        {q.commScore}/10
+                      </span>
                     </span>
                     <span>
                       Complete:{" "}
@@ -334,16 +380,23 @@ function InterviewFeedback() {
                   </div>
                 </div>
                 <p className="text-[var(--pf-text)] text-sm font-medium mb-3">
-                  {answers[i]?.question}
+                  {q.question || answers[i]?.question}
                 </p>
                 <div className="mb-4 rounded-xl border border-[var(--pf-border)] bg-[var(--pf-panel)] px-4 py-3">
-                  <p className="text-[var(--pf-muted)] text-xs mb-1">Your answer</p>
-                  <p className="text-[var(--pf-text-secondary)] text-sm">{answers[i]?.answer}</p>
+                  <p className="text-[var(--pf-muted)] text-xs mb-1">
+                    Your answer
+                  </p>
+                  <p className="text-[var(--pf-text-secondary)] text-sm">
+                    {q.userAnswer || answers[i]?.answer}
+                  </p>
                 </div>
                 {q.wasSpoken && q.fillerWords && (
                   <div className="flex flex-wrap items-center gap-3 mb-4 text-xs text-[var(--pf-muted)]">
                     <span className="rounded-full bg-[var(--pf-panel-soft)] px-3 py-1">
                       🎤 {q.wordsPerMinute ?? "--"} words/min
+                      {getPacingLabel(q.wordsPerMinute) && (
+                        <> · {getPacingLabel(q.wordsPerMinute)}</>
+                      )}
                     </span>
                     <span className="rounded-full bg-[var(--pf-panel-soft)] px-3 py-1">
                       Filler words: um {q.fillerWords.um} · uh{" "}
@@ -357,7 +410,9 @@ function InterviewFeedback() {
                       <p className="text-[var(--pf-success)] text-xs font-medium mb-1">
                         ✅ What went well
                       </p>
-                      <p className="text-[var(--pf-text-secondary)] text-sm">{q.whatWentWell}</p>
+                      <p className="text-[var(--pf-text-secondary)] text-sm">
+                        {q.whatWentWell}
+                      </p>
                     </div>
                   )}
                   {q.whatWasMissed && (
@@ -370,12 +425,31 @@ function InterviewFeedback() {
                       </p>
                     </div>
                   )}
+                  {q.missedPoints && q.missedPoints.length > 0 && (
+                    <div>
+                      <p className="text-[var(--pf-primary)] text-xs font-medium mb-1">
+                        🎯 Points you could have added
+                      </p>
+                      <ul className="space-y-1">
+                        {q.missedPoints.map((point, idx) => (
+                          <li
+                            key={idx}
+                            className="text-[var(--pf-text-secondary)] text-sm"
+                          >
+                            • {point}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {q.idealAnswer && (
                     <div>
                       <p className="text-[var(--pf-primary)] text-xs font-medium mb-1">
                         💡 Ideal answer
                       </p>
-                      <p className="text-[var(--pf-text-secondary)] text-sm">{q.idealAnswer}</p>
+                      <p className="text-[var(--pf-text-secondary)] text-sm">
+                        {q.idealAnswer}
+                      </p>
                     </div>
                   )}
                 </div>

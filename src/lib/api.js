@@ -21,6 +21,24 @@ const TECHNICAL_SUBJECT_GUIDANCE = {
     "balanced computer science fundamentals spanning problem solving, systems, databases, and networking",
 };
 
+const SCENARIO_FLAVORS = [
+  "a fast-moving early-stage startup",
+  "a large enterprise with many stakeholders and approval layers",
+  "a fully remote, distributed team across time zones",
+  "a client-facing consulting or agency engagement",
+  "a product still finding market fit, with fast-changing requirements",
+  "a team recovering from a recent reorg or leadership change",
+  "a high-stakes production incident under time pressure",
+  "a cross-functional project involving design, product, and engineering",
+  "an open-source or community-driven codebase",
+  "a tight, time-boxed sprint or hackathon setting",
+];
+
+function pickScenarioFlavors(count = 2) {
+  const shuffled = [...SCENARIO_FLAVORS].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
 const DIFFICULTY_PROGRESSIONS = {
   easy: "start with straightforward fundamentals, then move into applied reasoning, and end with slightly tougher follow-ups or scenario-based questions",
   medium:
@@ -314,6 +332,13 @@ function inferCommunicationEvalMode(question, selectedMode) {
 }
 
 function normalizeCommunicationEvaluation(data) {
+  const missedPoints = Array.isArray(data?.missedPoints)
+    ? data.missedPoints
+        .filter(Boolean)
+        .map((item) => String(item).trim())
+        .filter(Boolean)
+    : [];
+
   return {
     scores: normalizeCommunicationScores(data?.scores),
     summary:
@@ -327,6 +352,7 @@ function normalizeCommunicationEvaluation(data) {
       data?.issues,
       "The answer needed clearer structure, sharper language, and better focus.",
     ),
+    missedPoints,
     improvedAnswer:
       String(data?.improvedAnswer || "").trim() ||
       "The answer needed a stronger, clearer rewrite.",
@@ -376,104 +402,133 @@ function summarizeCommunicationPerformance(averageScores) {
   return `Your strongest area was ${strongest[0]} (${strongest[1]}/10), while ${weakest[0]} (${weakest[1]}/10) was the main gap. The answers showed usable ideas, but they still need tighter delivery, better structure, and more deliberate phrasing to sound interview-ready.`;
 }
 
-async function evaluateCommunicationAnswer(question, answer, selectedMode) {
-  const communicationMode = inferCommunicationEvalMode(question, selectedMode);
-  const trimmedAnswer = String(answer || "").trim();
-  if (trimmedAnswer.length < 10) {
-    return normalizeCommunicationEvaluation({
-      scores: { clarity: 0, structure: 0, fluency: 0, depth: 0, relevance: 0 },
-      summary: "The candidate did not provide a meaningful answer.",
-      whatWentWell: [
-        "No strengths to highlight — the answer was too brief to evaluate.",
-      ],
-      issues: [
-        "The answer was too short to demonstrate any communication ability.",
-        "No structure, depth, or relevance could be assessed.",
-        "A complete, thoughtful response is required.",
-      ],
-      improvedAnswer:
-        "A proper answer to this question would require the candidate to describe their approach in detail, using specific examples and structured reasoning.",
-    });
-  }
-
-  const prompt = `
-You are a senior communication coach and interviewer.
-
-Your task is to evaluate and improve a candidate's spoken answer.
-
-COMMUNICATION MODE:
-${communicationMode}
-
-Modes:
-- impromptu -> evaluate thinking clarity, flow, coherence
-- structured -> evaluate structured answering (STAR format)
-- explain -> evaluate simplicity and clarity of explanation
-
-CANDIDATE QUESTION:
-${question}
-
-CANDIDATE ANSWER:
-${answer || "[No answer given]"}
-
-EVALUATION RULES:
-- Be strict and realistic.
-- DO NOT give generic praise.
-- DO NOT say "good answer" without justification.
-- DO NOT ignore mistakes.
-- Evaluate based on:
-  1. Clarity
-  2. Structure
-  3. Depth
-  4. Fluency
-  5. Relevance
-- Each score must be between 0 and 10 using integers only.
-
-CRITICAL INSTRUCTION - IMPROVED ANSWER:
-- Rewrite the candidate's answer into a high-quality ideal version.
-- Keep the SAME core idea of the candidate.
-- DO NOT change the meaning completely.
-- Fix structure, grammar, clarity.
-- Remove filler and repetition.
-- Make it sound confident and professional.
-- Keep it natural, not robotic.
-- If mode = impromptu:
-  - organize into a clear opening
-  - 2-3 logical points
-  - short conclusion
-- If mode = structured:
-  - convert into STAR format:
-    - Situation
-    - Task
-    - Action
-    - Result
-- If mode = explain:
-  - simplify language
-  - use analogy if possible
-  - make it understandable to a beginner
-
-YOUR OUTPUT MUST BE JSON ONLY:
-{
-  "scores": {
-    "clarity": 0,
-    "structure": 0,
-    "fluency": 0,
-    "depth": 0,
-    "relevance": 0
-  },
-  "summary": "",
-  "whatWentWell": ["", "", ""],
-  "issues": ["", "", ""],
-  "improvedAnswer": ""
+function buildSpeechMetricsHint(item) {
+  if (!item?.wasSpoken) return "";
+  const filler = item.fillerWords || { um: 0, uh: 0, like: 0 };
+  const total = (filler.um || 0) + (filler.uh || 0) + (filler.like || 0);
+  return `\nMeasured speech data: ${item.wordsPerMinute || 0} words/min, ${total} filler words (um: ${filler.um || 0}, uh: ${filler.uh || 0}, like: ${filler.like || 0}).`;
 }
 
-NO markdown
-NO explanation outside JSON
-RETURN ONLY JSON
+async function evaluateCommunicationSession(sessionData, communicationMode) {
+  const qaBlocks = sessionData
+    .map((item, i) => {
+      if (item?.skipped) {
+        return `Q${i + 1}: ${item.question}\nA${i + 1}: [Skipped — no answer given]`;
+      }
+      const inferredMode = inferCommunicationEvalMode(
+        item.question,
+        communicationMode,
+      );
+      return `Q${i + 1}: ${item.question}\nMode: ${inferredMode}\nA${i + 1}: ${item.answer}${buildSpeechMetricsHint(item)}`;
+    })
+    .join("\n\n");
+
+  const prompt = `
+You are a senior communication coach reviewing a full mock interview with ${sessionData.length} questions, all at once.
+
+${qaBlocks}
+
+EVALUATION RULES:
+- Be strict and realistic. Do not give generic praise without justification.
+- Score each answer 0-10 (integers) on: clarity, structure, fluency, depth, relevance.
+- A question marked "[Skipped — no answer given]" must score 0 on every dimension.
+- Ground every piece of feedback in specifics from THAT answer — quote or closely
+  paraphrase an actual phrase, example, or moment the candidate actually said.
+  Never use a bare generic label like "filled with filler words and repetition" on
+  its own — say what was actually repeated, or which specific sentence lacked structure.
+- If real measured speech data (words/min, filler word counts) is given for a question,
+  use those exact numbers in your feedback instead of guessing from the text.
+- If the SAME underlying problem (e.g. heavy filler word usage) shows up in more than
+  one answer, say so explicitly ONCE as a pattern across the session (e.g. "this is the
+  second answer in a row with heavy filler word use") instead of repeating the same
+  generic sentence on every question as if it were new each time.
+- issues must ONLY cover delivery problems (filler words, structure, pacing, clarity of
+  phrasing) — never content gaps. Content gaps go in missedPoints instead, described below.
+- missedPoints is a SEPARATE category: 2-4 specific, substantive points, examples,
+  considerations, or angles relevant to THIS SPECIFIC QUESTION'S TOPIC that the candidate
+  did not mention but should have to make the answer stronger. This is about WHAT was said,
+  not HOW it was said. Ground this in real subject-matter reasoning about the question
+  itself. If the answer already covered the obvious points well, name a more advanced or
+  nuanced angle instead — there is almost always a next-level point to add.
+- FORBIDDEN missedPoints phrasing — NEVER write meta-instructions telling the candidate to
+  add something without naming the actual thing. Banned patterns include: "a specific
+  example of...", "the steps they would take to...", "more details about...", "the outcome
+  of the situation", "add more detail". If you catch yourself writing one of these, STOP
+  and replace it with the actual concrete point, named directly, as if you were answering
+  the question yourself.
+- GOLD STANDARD EXAMPLE — calibrate your depth and specificity to match this bar:
+  Question: "Tell me about a time you showed leadership without being asked."
+  Weak missedPoint (BANNED STYLE): "A specific example of when they showed leadership."
+  Strong missedPoint (REQUIRED STYLE): "You could have named the actual friction you
+  solved — e.g. two teams duplicating work because nobody owned a shared status update —
+  and quantified the fix, like 'cut repeated bugs by half' or 'saved the team roughly
+  X hours a week', since concrete numbers are what separate a generic leadership story
+  from a memorable one."
+  A correspondingly strong improvedAnswer for that question reads like a real, complete,
+  interview-ready answer with a real named problem, real actions taken, and a real
+  measurable outcome — not a one-sentence summary of what a good answer would contain.
+- For each answer, rewrite it into a genuinely elaborate, high-quality improved version —
+  several sentences with real substance, not a short summary. Keep the same core idea, fix
+  structure/grammar/clarity, remove fillers and repetition, confident and natural tone —
+  AND naturally weave in the missedPoints you identified, so the improved answer actually
+  demonstrates the depth and completeness a strong candidate would give, the way an
+  experienced interview coach would model the answer for a student, not a placeholder
+  description of what a good answer would contain.
+
+YOUR OUTPUT MUST BE JSON ONLY, in this exact shape:
+{
+  "perQuestion": [
+    {
+      "scores": { "clarity": 0, "structure": 0, "fluency": 0, "depth": 0, "relevance": 0 },
+      "whatWentWell": ["specific point", "specific point"],
+      "issues": ["specific delivery point", "specific delivery point"],
+      "missedPoints": ["specific content point", "specific content point"],
+      "improvedAnswer": ""
+    }
+  ],
+  "overallSummary": ""
+}
+perQuestion must have exactly ${sessionData.length} items, in the same order as the
+questions above. overallSummary should synthesize the whole session in 2-3 sentences,
+naming any pattern that repeated across multiple answers.
+
+NO markdown. NO explanation outside JSON. RETURN ONLY JSON.
 `;
 
-  const text = await callGroq(prompt, 0.3, 900);
+  const text = await callGroq(prompt, 0.3, 2800);
   const parsed = JSON.parse(extractJsonBlock(text));
-  return normalizeCommunicationEvaluation(parsed);
+  const rawItems = Array.isArray(parsed?.perQuestion) ? parsed.perQuestion : [];
+
+  const evaluations = sessionData.map((item, index) => {
+    if (item?.skipped) {
+      return {
+        scores: {
+          clarity: 0,
+          structure: 0,
+          fluency: 0,
+          depth: 0,
+          relevance: 0,
+        },
+        summary:
+          "The question was skipped, so there was no answer to evaluate.",
+        whatWentWell: ["No strengths to highlight — the question was skipped."],
+        issues: [
+          "The answer was skipped.",
+          "No structure, depth, or relevance could be assessed.",
+          "A complete response is required for interview evaluation.",
+        ],
+        missedPoints: [],
+        improvedAnswer:
+          "This question needs a complete spoken answer before it can be improved.",
+      };
+    }
+    return normalizeCommunicationEvaluation(rawItems[index]);
+  });
+
+  return {
+    evaluations,
+    overallSummary: String(parsed?.overallSummary || "").trim(),
+  };
 }
 
 function validateQuestionSet(parsed, questionCount) {
@@ -550,6 +605,13 @@ function normalizeFeedback(data, questionCount) {
           ? item.fillerWords
           : {};
 
+      const missedPoints = Array.isArray(item?.missedPoints)
+        ? item.missedPoints
+            .filter(Boolean)
+            .map((point) => String(point).trim())
+            .filter(Boolean)
+        : [];
+
       return {
         questionIndex: Number.isInteger(item?.questionIndex)
           ? item.questionIndex
@@ -560,6 +622,7 @@ function normalizeFeedback(data, questionCount) {
         scores: normalizeCommunicationScores(item?.scores),
         whatWentWell: String(item?.whatWentWell || "").trim(),
         whatWasMissed: String(item?.whatWasMissed || "").trim(),
+        missedPoints,
         idealAnswer: String(item?.idealAnswer || "").trim(),
         fillerWords: {
           um: Number(fillerWords.um) || 0,
@@ -703,6 +766,7 @@ export async function generateQuestions(
   const technicalGuidance = technicalCoveragePlan
     .map((item) => `- ${item.label}: ${item.guidance}`)
     .join("\n");
+  const scenarioFlavors = pickScenarioFlavors(2);
   const additionalRules =
     mode === "technical"
       ? `- Cover ALL selected subjects: ${subjectLabel}
@@ -782,8 +846,17 @@ Interview Context:
 Your task:
 Generate a realistic, progressive interview question set that feels like a real interviewer is guiding the round.
 
+Scenario grounding for this specific session (use this to keep questions fresh and
+avoid falling back on the same well-worn examples every time): lean toward scenarios
+set in the context of ${scenarioFlavors.join(" or ")}.
+
 Rules:
 - Generate EXACTLY ${questionCount} questions.
+- Vary the concrete scenario, company context, and specific situation every session —
+  do not default to the most commonly seen interview clichés verbatim (e.g. don't
+  always default to the exact same disagreement-with-a-manager or biggest-weakness
+  phrasing). The underlying skill being tested can repeat across sessions, but the
+  specific scenario, wording, and details must feel fresh each time.
 - Questions MUST follow this progression: ${difficultyProgression}
 - Questions MUST be relevant to the target role (${roleLabel}) unless the interview type is communication.
 - Every question must be specific, non-generic, and interview-realistic.
@@ -896,38 +969,10 @@ export async function generateFeedback(sessionData, context = {}) {
       : null;
 
   if (mode === "communication") {
-    const evaluations = [];
-
-    for (const item of sessionData) {
-      const evaluation = item?.skipped
-        ? normalizeCommunicationEvaluation({
-            scores: {
-              clarity: 0,
-              structure: 0,
-              fluency: 0,
-              depth: 0,
-              relevance: 0,
-            },
-            summary:
-              "The question was skipped, so there was no answer to evaluate.",
-            whatWentWell: [
-              "No strengths to highlight because the question was skipped.",
-            ],
-            issues: [
-              "The answer was skipped.",
-              "No structure, depth, or relevance could be assessed.",
-              "A complete response is required for interview evaluation.",
-            ],
-            improvedAnswer:
-              "This question needs a complete spoken answer before it can be improved.",
-          })
-        : await evaluateCommunicationAnswer(
-            item.question,
-            item.answer,
-            communicationMode,
-          );
-      evaluations.push(evaluation);
-    }
+    const { evaluations, overallSummary } = await evaluateCommunicationSession(
+      sessionData,
+      communicationMode,
+    );
 
     const averageScores = {
       clarity: averageScore(evaluations.map((item) => item.scores.clarity)),
@@ -971,7 +1016,8 @@ export async function generateFeedback(sessionData, context = {}) {
         overallTechScore,
         overallCommScore,
         overallCompletenessScore,
-        summary: summarizeCommunicationPerformance(averageScores),
+        summary:
+          overallSummary || summarizeCommunicationPerformance(averageScores),
         whatWentWell,
         areasToImprove,
         studySuggestions,
@@ -999,6 +1045,7 @@ export async function generateFeedback(sessionData, context = {}) {
             scores: item.scores,
             whatWentWell: item.whatWentWell.join(" "),
             whatWasMissed: item.issues.join(" "),
+            missedPoints: item.missedPoints,
             idealAnswer: item.improvedAnswer,
             fillerWords: { um: 0, uh: 0, like: 0 },
           };
@@ -1117,6 +1164,46 @@ Evaluation Rules:
 - Evaluate based on role expectations (${roleLabel})
 - Keep the evaluation aligned with the selected interview type
 - Score each field on a 0 to 10 scale using whole numbers only
+- whatWentWell and whatWasMissed for EACH question must be grounded in specifics
+  from THAT candidate's actual answer — quote or closely paraphrase something they
+  actually said. Never write a generic, could-apply-to-any-answer sentence.
+
+CRITICAL INSTRUCTION FOR perQuestion[i].missedPoints:
+- For EACH question, in addition to whatWasMissed (which covers delivery, structure,
+  and completeness problems), also fill perQuestion[i].missedPoints: 2-4 specific,
+  substantive points, facts, examples, or considerations relevant to THAT SPECIFIC
+  QUESTION that the candidate should have mentioned but did not.
+- Ground this in real subject-matter reasoning about the actual question asked.
+- FORBIDDEN phrasing — NEVER write meta-instructions telling the candidate to add
+  something without naming the actual thing. Banned patterns: "a specific example
+  of...", "the steps they would take to...", "more details about...", "the outcome
+  of the situation". If you catch yourself writing one of these, replace it with the
+  actual concrete point, named directly, as if you were answering the question yourself.
+- GOLD STANDARD EXAMPLE — calibrate to this bar:
+  Question: "Tell me about a time you showed leadership without being asked."
+  Weak (BANNED): "A specific example of when they showed leadership."
+  Strong (REQUIRED): "You could have named the actual friction you solved — e.g. two
+  teams duplicating work because nobody owned a shared status update — and quantified
+  the fix, like 'cut repeated bugs by half', since concrete numbers separate a generic
+  leadership story from a memorable one."
+- If the answer already covered the question thoroughly, name a more advanced or
+  edge-case angle instead. missedPoints can be an empty array only if there is
+  genuinely nothing more to add, which should be rare.
+
+CRITICAL INSTRUCTION FOR perQuestion[i].idealAnswer:
+- idealAnswer MUST be a genuinely elaborate, complete, interview-ready rewrite of THIS
+  candidate's own answer — several sentences of real substance, not a short summary or
+  a one-line description of what a good answer would contain.
+- Keep the same core idea, examples, and facts the candidate actually gave.
+- Do NOT invent new facts, projects, or outcomes the candidate never mentioned,
+  EXCEPT for weaving in the specific missedPoints you identified above — those
+  should be naturally incorporated so the rewrite demonstrates the depth and
+  completeness a strong candidate would actually give.
+- Fix structure, remove filler words and repetition, tighten vague phrasing.
+- If the candidate's answer was too short, vague, or skipped to meaningfully
+  rewrite, say so plainly instead of inventing a fictional answer on their behalf.
+- Make it sound confident, natural, and professional — the way an experienced coach
+  would model a strong answer, never robotic or template-like.
 ${communicationRules}
 
 Return ONLY valid JSON:
@@ -1144,6 +1231,7 @@ Return ONLY valid JSON:
       },
       "whatWentWell": "",
       "whatWasMissed": "",
+      "missedPoints": ["", ""],
       "idealAnswer": "",
       "fillerWords": {"um": 0, "uh": 0, "like": 0}
     }
@@ -1153,7 +1241,7 @@ Return ONLY valid JSON:
 No markdown. No extra text.
 `;
 
-  const text = await callGroq(prompt, 0.4, 2048);
+  const text = await callGroq(prompt, 0.4, 3200);
   const parsed = JSON.parse(extractJsonBlock(text));
   return attachSpeechMetrics(
     normalizeFeedback(parsed, sessionData.length),

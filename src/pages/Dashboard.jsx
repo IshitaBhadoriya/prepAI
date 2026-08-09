@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import { getUserSessions, getUserStats, getStreak } from "../lib/database";
 import DashboardLayout from "../components/layout/DashboardLayout";
+import { getPacingLabel } from "../lib/speechMetrics";
 import {
   LineChart,
   Line,
@@ -168,7 +169,9 @@ function StatCard({ icon, label, value, sub, color, highlight }) {
           {sub}
         </span>
       </div>
-      <div className="mb-1 text-4xl font-extrabold text-[var(--pf-text)]">{value}</div>
+      <div className="mb-1 text-4xl font-extrabold text-[var(--pf-text)]">
+        {value}
+      </div>
       <div className="text-sm font-medium text-[var(--pf-muted)]">{label}</div>
     </div>
   );
@@ -235,7 +238,9 @@ function EmptyHistory() {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="text-5xl mb-4">🎯</div>
-      <h3 className="text-[var(--pf-text)] font-semibold text-lg mb-2">No sessions yet</h3>
+      <h3 className="text-[var(--pf-text)] font-semibold text-lg mb-2">
+        No sessions yet
+      </h3>
       <p className="text-[var(--pf-muted)] text-sm max-w-xs">
         Start your first mock interview to see your performance history here.
       </p>
@@ -260,12 +265,20 @@ function CustomTooltip({ active, payload, label }) {
 function ScoreBar({ label, score }) {
   const pct = (score / 10) * 100;
   const color =
-    score >= 7 ? "bg-[var(--pf-success)]" : score >= 4 ? "bg-[var(--pf-warning)]" : "bg-[var(--pf-danger)]";
+    score >= 7
+      ? "bg-[var(--pf-success)]"
+      : score >= 4
+        ? "bg-[var(--pf-warning)]"
+        : "bg-[var(--pf-danger)]";
   return (
     <div className="mb-3">
       <div className="flex justify-between mb-1">
-        <span className="text-[var(--pf-muted)] text-sm font-medium">{label}</span>
-        <span className="text-[var(--pf-text)] text-sm font-semibold">{score}/10</span>
+        <span className="text-[var(--pf-muted)] text-sm font-medium">
+          {label}
+        </span>
+        <span className="text-[var(--pf-text)] text-sm font-semibold">
+          {score}/10
+        </span>
       </div>
       <div className="h-2 w-full rounded-full bg-[var(--pf-panel-soft)] shadow-inner">
         <div
@@ -343,9 +356,20 @@ function ActivityHeatmap({ data }) {
 
 // ─── Session Feedback Modal ───────────────────────────────────────────────────
 
+function getKnowledgeLabel(mode) {
+  return mode === "communication" ? "Depth & Relevance" : "Technical / Content";
+}
+
+function getKnowledgeShortLabel(mode) {
+  return mode === "communication" ? "D/R:" : "T:";
+}
+
 function SessionFeedbackModal({ session, onClose }) {
   const f = session.feedback_json;
   if (!f) return null;
+
+  const knowledgeLabel = getKnowledgeLabel(session.mode);
+  const knowledgeShortLabel = getKnowledgeShortLabel(session.mode);
 
   const date = new Date(session.created_at).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -359,7 +383,9 @@ function SessionFeedbackModal({ session, onClose }) {
         {/* Modal header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--pf-border)]">
           <div>
-            <h2 className="text-[var(--pf-text)] font-semibold">Session Feedback</h2>
+            <h2 className="text-[var(--pf-text)] font-semibold">
+              Session Feedback
+            </h2>
             <p className="text-[var(--pf-muted)] text-xs mt-0.5 capitalize">
               {session.mode} · {session.difficulty} · {date}
             </p>
@@ -375,8 +401,10 @@ function SessionFeedbackModal({ session, onClose }) {
         <div className="px-6 py-6 space-y-6">
           {/* Scores */}
           <div className="bg-[var(--pf-panel)] border border-[var(--pf-border)] rounded-xl p-5">
-            <h3 className="text-[var(--pf-text)] font-medium mb-4">Overall Scores</h3>
-            <ScoreBar label="Technical / Content" score={f.overallTechScore} />
+            <h3 className="text-[var(--pf-text)] font-medium mb-4">
+              Overall Scores
+            </h3>
+            <ScoreBar label={knowledgeLabel} score={f.overallTechScore} />
             <ScoreBar label="Communication" score={f.overallCommScore} />
             <ScoreBar label="Completeness" score={f.overallCompletenessScore} />
           </div>
@@ -397,7 +425,10 @@ function SessionFeedbackModal({ session, onClose }) {
               </h3>
               <ul className="space-y-1.5">
                 {f.whatWentWell?.map((item, i) => (
-                  <li key={i} className="text-[var(--pf-text-secondary)] text-sm">
+                  <li
+                    key={i}
+                    className="text-[var(--pf-text-secondary)] text-sm"
+                  >
                     • {item}
                   </li>
                 ))}
@@ -409,7 +440,10 @@ function SessionFeedbackModal({ session, onClose }) {
               </h3>
               <ul className="space-y-1.5">
                 {f.areasToImprove?.map((item, i) => (
-                  <li key={i} className="text-[var(--pf-text-secondary)] text-sm">
+                  <li
+                    key={i}
+                    className="text-[var(--pf-text-secondary)] text-sm"
+                  >
                     • {item}
                   </li>
                 ))}
@@ -439,19 +473,26 @@ function SessionFeedbackModal({ session, onClose }) {
               </h3>
               <div className="space-y-3">
                 {f.perQuestion.map((q, i) => (
-                  <div key={i} className="bg-[var(--pf-panel)] border border-[var(--pf-border)] rounded-xl p-4">
+                  <div
+                    key={i}
+                    className="bg-[var(--pf-panel)] border border-[var(--pf-border)] rounded-xl p-4"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[var(--pf-muted)] text-xs font-medium">
                         Question {i + 1}
                       </span>
                       <div className="flex gap-2 text-xs text-[var(--pf-muted)]">
                         <span>
-                          T:{" "}
-                          <span className="text-[var(--pf-text)]">{q.techScore}/10</span>
+                          {knowledgeShortLabel}{" "}
+                          <span className="text-[var(--pf-text)]">
+                            {q.techScore}/10
+                          </span>
                         </span>
                         <span>
                           C:{" "}
-                          <span className="text-[var(--pf-text)]">{q.commScore}/10</span>
+                          <span className="text-[var(--pf-text)]">
+                            {q.commScore}/10
+                          </span>
                         </span>
                         <span>
                           ✓:{" "}
@@ -461,6 +502,35 @@ function SessionFeedbackModal({ session, onClose }) {
                         </span>
                       </div>
                     </div>
+                    {q.question && (
+                      <p className="text-[var(--pf-text)] text-xs font-medium mb-2">
+                        {q.question}
+                      </p>
+                    )}
+                    {q.userAnswer && (
+                      <div className="mb-2 rounded-lg border border-[var(--pf-border)] bg-[var(--pf-page)] px-3 py-2">
+                        <p className="text-[var(--pf-muted)] text-[10px] mb-0.5">
+                          Your answer
+                        </p>
+                        <p className="text-[var(--pf-text-secondary)] text-xs">
+                          {q.userAnswer}
+                        </p>
+                      </div>
+                    )}
+                    {q.wasSpoken && q.fillerWords && (
+                      <div className="flex flex-wrap items-center gap-2 mb-2 text-[10px] text-[var(--pf-muted)]">
+                        <span className="rounded-full bg-[var(--pf-panel-soft)] px-2 py-0.5">
+                          🎤 {q.wordsPerMinute ?? "--"} words/min
+                          {getPacingLabel(q.wordsPerMinute) && (
+                            <> · {getPacingLabel(q.wordsPerMinute)}</>
+                          )}
+                        </span>
+                        <span className="rounded-full bg-[var(--pf-panel-soft)] px-2 py-0.5">
+                          Filler words: um {q.fillerWords.um} · uh{" "}
+                          {q.fillerWords.uh} · like {q.fillerWords.like}
+                        </span>
+                      </div>
+                    )}
                     {q.whatWentWell && (
                       <p className="text-[var(--pf-success)] text-xs mb-1">
                         ✅ {q.whatWentWell}
@@ -470,6 +540,18 @@ function SessionFeedbackModal({ session, onClose }) {
                       <p className="text-[var(--pf-warning)] text-xs mb-1">
                         ⚠️ {q.whatWasMissed}
                       </p>
+                    )}
+                    {q.missedPoints && q.missedPoints.length > 0 && (
+                      <div className="mb-1">
+                        {q.missedPoints.map((point, idx) => (
+                          <p
+                            key={idx}
+                            className="text-[var(--pf-primary)] text-xs"
+                          >
+                            🎯 {point}
+                          </p>
+                        ))}
+                      </div>
                     )}
                     {q.idealAnswer && (
                       <p className="text-[var(--pf-primary)] text-xs">
@@ -558,7 +640,9 @@ function Dashboard() {
 
       <div className="px-6 py-8 md:px-8 md:py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--pf-text)]">Hey, {firstName} 👋</h1>
+          <h1 className="text-2xl font-bold text-[var(--pf-text)]">
+            Hey, {firstName} 👋
+          </h1>
           <p className="text-[var(--pf-muted)] text-sm mt-1">
             Ready to practice today?
           </p>
@@ -640,7 +724,10 @@ function Dashboard() {
                 </p>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={scoreOverTime}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={chartColors.grid}
+                    />
                     <XAxis
                       dataKey="date"
                       tick={{ fill: chartColors.axis, fontSize: 11 }}
@@ -676,7 +763,10 @@ function Dashboard() {
                   </p>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={performanceBreakdown} barSize={40}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke={chartColors.grid}
+                      />
                       <XAxis
                         dataKey="area"
                         tick={{ fill: chartColors.axis, fontSize: 11 }}
@@ -708,7 +798,9 @@ function Dashboard() {
                   </ResponsiveContainer>
                   {weakArea && (
                     <div className="mt-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                      <span className="text-[var(--pf-danger)] text-sm">⚠️</span>
+                      <span className="text-[var(--pf-danger)] text-sm">
+                        ⚠️
+                      </span>
                       <p className="text-[var(--pf-danger)] text-xs">
                         Focus area:{" "}
                         <span className="font-semibold">{weakArea.area}</span>{" "}
@@ -796,7 +888,9 @@ function Dashboard() {
         {/* Session History */}
         <div className="bg-[var(--pf-panel)] border border-[var(--pf-border)] rounded-xl shadow-lg">
           <div className="px-6 py-4 border-b border-[var(--pf-border)] flex items-center justify-between">
-            <h2 className="text-[var(--pf-text)] font-semibold">Recent Sessions</h2>
+            <h2 className="text-[var(--pf-text)] font-semibold">
+              Recent Sessions
+            </h2>
             <span className="text-[var(--pf-muted)] text-sm">
               {stats.total} session{stats.total !== 1 ? "s" : ""}
             </span>

@@ -18,9 +18,11 @@ function countFillerWords(text) {
 }
 
 function tokenize(text) {
-  return normalizeText(text)
-    .toLowerCase()
-    .match(/\b[\w']+\b/g) || [];
+  return (
+    normalizeText(text)
+      .toLowerCase()
+      .match(/\b[\w']+\b/g) || []
+  );
 }
 
 function findRepeatedPhrases(transcript) {
@@ -36,7 +38,9 @@ function findRepeatedPhrases(transcript) {
 
   return [...phraseCounts.entries()]
     .filter(([, count]) => count > 1)
-    .sort((a, b) => b[1] - a[1] || b[0].split(" ").length - a[0].split(" ").length)
+    .sort(
+      (a, b) => b[1] - a[1] || b[0].split(" ").length - a[0].split(" ").length,
+    )
     .slice(0, 5)
     .map(([phrase]) => phrase);
 }
@@ -115,13 +119,17 @@ export function computeSpeechMetrics({ transcript, words, duration } = {}) {
 
   return {
     fillerWords: countFillerWords(spokenText),
-    wordsPerMinute:
-      minutes > 0 ? Math.round(usableWords.length / minutes) : 0,
-    longestPauseSeconds:
-      pauses.length > 0 ? Math.max(...pauses) : 0,
+    wordsPerMinute: minutes > 0 ? Math.round(usableWords.length / minutes) : 0,
+    longestPauseSeconds: pauses.length > 0 ? Math.max(...pauses) : 0,
     averagePauseSeconds:
       pauses.length > 0 ? totalPauseSeconds / pauses.length : 0,
     repeatedPhrases: findRepeatedPhrases(transcript),
     usedRealTimestamps: true,
   };
+}
+export function getPacingLabel(wpm) {
+  if (!wpm) return null;
+  if (wpm < 110) return "Slow";
+  if (wpm > 160) return "Fast";
+  return "Good pace";
 }
