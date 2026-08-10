@@ -187,7 +187,11 @@ function InterviewFeedback() {
         void saveResults(enrichedResult);
       } catch (err) {
         console.error("FEEDBACK ERROR:", err);
-        setError("Failed to generate feedback. Please try again.");
+        setError(
+          err?.message?.startsWith("RATE_LIMITED:")
+            ? "The AI service is temporarily busy (usage limit reached). Please wait a few minutes and try again."
+            : "Failed to generate feedback. Please try again.",
+        );
       } finally {
         setLoading(false);
       }

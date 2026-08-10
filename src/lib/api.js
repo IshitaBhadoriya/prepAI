@@ -331,6 +331,17 @@ function inferCommunicationEvalMode(question, selectedMode) {
   return "impromptu";
 }
 
+function toStringArrayNoPad(value, fallback) {
+  const items = Array.isArray(value)
+    ? value
+        .filter(Boolean)
+        .map((item) => String(item).trim())
+        .filter(Boolean)
+    : [];
+
+  return items.length > 0 ? items : [fallback];
+}
+
 function normalizeCommunicationEvaluation(data) {
   const missedPoints = Array.isArray(data?.missedPoints)
     ? data.missedPoints
@@ -344,11 +355,11 @@ function normalizeCommunicationEvaluation(data) {
     summary:
       String(data?.summary || "").trim() ||
       "The answer was evaluated, but the summary was incomplete.",
-    whatWentWell: toStringArray(
+    whatWentWell: toStringArrayNoPad(
       data?.whatWentWell,
       "The answer had a useful core idea, but it needed stronger execution.",
     ),
-    issues: toStringArray(
+    issues: toStringArrayNoPad(
       data?.issues,
       "The answer needed clearer structure, sharper language, and better focus.",
     ),
@@ -413,13 +424,13 @@ async function evaluateCommunicationSession(sessionData, communicationMode) {
   const qaBlocks = sessionData
     .map((item, i) => {
       if (item?.skipped) {
-        return `Q${i + 1}: ${item.question}\nA${i + 1}: [Skipped — no answer given]`;
+        return `[ITEM_ID: ${i}]\nQ${i + 1}: ${item.question}\nA${i + 1}: [Skipped — no answer given]`;
       }
       const inferredMode = inferCommunicationEvalMode(
         item.question,
         communicationMode,
       );
-      return `Q${i + 1}: ${item.question}\nMode: ${inferredMode}\nA${i + 1}: ${item.answer}${buildSpeechMetricsHint(item)}`;
+      return `[ITEM_ID: ${i}]\nQ${i + 1}: ${item.question}\nMode: ${inferredMode}\nA${i + 1}: ${item.answer}${buildSpeechMetricsHint(item)}`;
     })
     .join("\n\n");
 
@@ -467,8 +478,8 @@ EVALUATION RULES:
   A correspondingly strong improvedAnswer for that question reads like a real, complete,
   interview-ready answer with a real named problem, real actions taken, and a real
   measurable outcome — not a one-sentence summary of what a good answer would contain.
-- For each answer, rewrite it into a genuinely elaborate, high-quality improved version —
-  several sentences with real substance, not a short summary. Keep the same core idea, fix
+- For each answer, rewrite it into a high-quality improved version with real substance,
+  not a short summary. ${sessionData.length > 6 ? "This session has many questions — keep each rewrite focused (roughly 3-4 sentences) rather than maximally long, since consistent depth across all questions matters more than maximum length on any one." : "Several sentences is appropriate here."} Keep the same core idea, fix
   structure/grammar/clarity, remove fillers and repetition, confident and natural tone —
   AND naturally weave in the missedPoints you identified, so the improved answer actually
   demonstrates the depth and completeness a strong candidate would give, the way an
@@ -479,6 +490,7 @@ YOUR OUTPUT MUST BE JSON ONLY, in this exact shape:
 {
   "perQuestion": [
     {
+      "questionIndex": 0,
       "scores": { "clarity": 0, "structure": 0, "fluency": 0, "depth": 0, "relevance": 0 },
       "whatWentWell": ["specific point", "specific point"],
       "issues": ["specific delivery point", "specific delivery point"],
@@ -488,16 +500,20 @@ YOUR OUTPUT MUST BE JSON ONLY, in this exact shape:
   ],
   "overallSummary": ""
 }
-perQuestion must have exactly ${sessionData.length} items, in the same order as the
-questions above. overallSummary should synthesize the whole session in 2-3 sentences,
+perQuestion must have exactly ${sessionData.length} items. Each Q/A pair above starts
+with a tag like [ITEM_ID: 3] — copy that exact number into questionIndex for the item
+describing that answer; do not infer position yourself. Before finalizing, walk through
+every [ITEM_ID: N] tag in order and confirm you produced exactly one entry per ID with
+matching content. overallSummary should synthesize the whole session in 2-3 sentences,
 naming any pattern that repeated across multiple answers.
 
 NO markdown. NO explanation outside JSON. RETURN ONLY JSON.
 `;
 
-  const text = await callGroq(prompt, 0.3, 2800);
-  const parsed = JSON.parse(extractJsonBlock(text));
+  const feedbackTokenBudget = 1200 + sessionData.length * 400;
+  const parsed = await callGroqForJson(prompt, 0.3, feedbackTokenBudget);
   const rawItems = Array.isArray(parsed?.perQuestion) ? parsed.perQuestion : [];
+  const rawByIndex = buildIndexedFeedbackMap(rawItems, sessionData.length);
 
   const evaluations = sessionData.map((item, index) => {
     if (item?.skipped) {
@@ -522,7 +538,9 @@ NO markdown. NO explanation outside JSON. RETURN ONLY JSON.
           "This question needs a complete spoken answer before it can be improved.",
       };
     }
-    return normalizeCommunicationEvaluation(rawItems[index]);
+    return normalizeCommunicationEvaluation(
+      rawByIndex.get(index) || rawItems[index],
+    );
   });
 
   return {
@@ -576,8 +594,38 @@ function validateQuestionSet(parsed, questionCount) {
   };
 }
 
+function buildIndexedFeedbackMap(rawItems, expectedCount) {
+  const byIndex = new Map();
+  rawItems.forEach((item, position) => {
+    const reportedIndex = Number.isInteger(item?.questionIndex)
+      ? item.questionIndex
+      : position;
+    if (
+      reportedIndex >= 0 &&
+      reportedIndex < expectedCount &&
+      !byIndex.has(reportedIndex)
+    ) {
+      byIndex.set(reportedIndex, item);
+    }
+  });
+
+  // Fill any gaps individually using the item at that array position, instead
+  // of discarding ID-based matching for the WHOLE response just because one
+  // slot's questionIndex was missing, duplicated, or out of range.
+  for (let i = 0; i < expectedCount; i += 1) {
+    if (!byIndex.has(i) && rawItems[i]) {
+      byIndex.set(i, rawItems[i]);
+    }
+  }
+
+  return byIndex;
+}
+
 function normalizeFeedback(data, questionCount) {
-  const perQuestion = Array.isArray(data?.perQuestion) ? data.perQuestion : [];
+  const rawPerQuestion = Array.isArray(data?.perQuestion)
+    ? data.perQuestion
+    : [];
+  const byIndex = buildIndexedFeedbackMap(rawPerQuestion, questionCount);
 
   return {
     overallTechScore: clampScore(data?.overallTechScore),
@@ -599,7 +647,7 @@ function normalizeFeedback(data, questionCount) {
       "Practice timed mock interviews and review your weaker areas.",
     ),
     perQuestion: Array.from({ length: questionCount }, (_, index) => {
-      const item = perQuestion[index] || {};
+      const item = byIndex.get(index) || rawPerQuestion[index] || {};
       const fillerWords =
         item?.fillerWords && typeof item.fillerWords === "object"
           ? item.fillerWords
@@ -726,7 +774,50 @@ async function callGroq(
     }
   }
 
-  throw new Error("Failed after retries. Please wait a moment and try again.");
+  throw new Error(
+    "RATE_LIMITED: Groq's usage limit was reached after 3 attempts. Please wait a few minutes before trying again.",
+  );
+}
+
+// Feedback responses are large JSON objects (per-question scores, missed points,
+// full rewritten answers, across up to 10 questions) and can occasionally come
+// back truncated or malformed. Retry with a larger token budget rather than
+// surfacing a parse error to the user on the first hiccup.
+async function callGroqForJson(
+  prompt,
+  temperature,
+  baseMaxTokens,
+  retries = 1,
+) {
+  // IMPORTANT: callGroq() already retries internally (up to 3x) on rate limits
+  // and timeouts. Retrying that whole call again here on top of it multiplies
+  // total network requests fast (each JSON-retry attempt can itself trigger
+  // several network-level retries) — which can trigger the very rate limits
+  // this is trying to recover from. Keep `retries` small (1 extra attempt max).
+  let lastError;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const attemptTokens = baseMaxTokens + attempt * 600;
+    const text = await callGroq(prompt, temperature, attemptTokens);
+
+    try {
+      return JSON.parse(extractJsonBlock(text));
+    } catch (err) {
+      lastError = err;
+      if (import.meta.env.DEV) {
+        console.log(
+          `Feedback JSON parse failed (attempt ${attempt + 1}/${retries + 1}): ${err.message}. Retrying with a slightly larger token budget...`,
+        );
+      }
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+  }
+
+  throw new Error(
+    `The AI response could not be parsed after ${retries + 1} attempts (${lastError?.message || "unknown error"}). Please try again in a moment.`,
+  );
 }
 
 export async function generateQuestions(
@@ -911,14 +1002,22 @@ export async function generateFollowUp(
     mode === "communication"
       ? humanizeId(communicationMode, "Impromptu")
       : null;
-  const prompt = `
-You are a strict ${modeConfig.interviewer} hiring for ${roleLabel}.
 
-Interview Type: ${humanizeId(mode)}
-Subject Coverage: ${subjectLabel}
-Communication Mode: ${communicationModeLabel || "N/A"}
-Primary Focus: ${modeConfig.focus}
-Interviewer Intent: ${modeConfig.interviewerIntent}
+  const prompt = `
+You are a senior ${modeConfig.interviewer} conducting a real interview for a ${roleLabel} candidate.
+
+Your job is NOT to automatically generate a follow-up after every answer.
+
+Your job is to decide whether this answer genuinely requires a follow-up, and only
+generate one when doing so would meaningfully assess the candidate further.
+
+Interview Context:
+- Interview Type: ${humanizeId(mode)}
+- Subject Coverage: ${subjectLabel}
+- Communication Mode: ${communicationModeLabel || "N/A"}
+- Role: ${roleLabel}
+- Primary Focus: ${modeConfig.focus}
+- Interviewer Intent: ${modeConfig.interviewerIntent}
 
 Original Question:
 ${question}
@@ -926,29 +1025,264 @@ ${question}
 Candidate Answer:
 ${answer || "[No answer given]"}
 
-Your task:
-Generate EXACTLY ONE follow-up question.
+STEP 1 — DECIDE WHETHER A FOLLOW-UP IS WARRANTED
 
-Follow-up MUST:
-- Be based on the candidate's answer
-- Identify a weakness, missing concept, or shallow explanation
-- Be relevant to the role (${roleLabel})
-- ${modeConfig.followUpFocus}
-- Be precise, role-aware, and interview-level
-- Continue the same thread instead of switching topics
-- Stay inside the same communication mode when the interview type is communication
+A follow-up IS warranted when the candidate's answer contains a meaningful unresolved
+point such as:
 
-DO NOT:
-- Repeat the original question
-- Ask generic questions
-- Ask unrelated topics
-- Switch to a different interview type
+- a technically incorrect or questionable claim
+- shallow reasoning that needs to be tested
+- an important missing concept
+- an unsupported claim
+- an unexplained decision or assumption
+- a missing trade-off
+- a missing edge case or limitation
+- a vague statement that needs clarification
+- an experience with unclear responsibility or ownership
+- an action with no explanation of why it was chosen
+- a claimed result with no evidence or measurable outcome
+- an answer that is strong enough to justify deeper interviewer probing
 
-STRICT OUTPUT:
-Return ONLY the follow-up question as plain text.
+A follow-up is NOT warranted merely because the answer could theoretically contain
+more information.
+
+If the candidate answered the question clearly, correctly, specifically, and sufficiently
+for the level of the interview, DO NOT manufacture a weakness. Move on.
+
+Do NOT generate a follow-up just to make the interview longer.
+
+STEP 2 — IDENTIFY THE HIGHEST-VALUE PROBE
+
+If a follow-up is warranted, internally identify the SINGLE most valuable thing to probe.
+
+Choose one:
+
+- MISSING_FOUNDATION
+- SHALLOW_REASONING
+- UNSUPPORTED_CLAIM
+- MISSING_EXAMPLE
+- MISSING_RESULT
+- MISSING_TRADEOFF
+- MISSING_EDGE_CASE
+- AMBIGUITY
+- INCORRECT_REASONING
+- STRONG_ANSWER_DEEPENING
+
+Do not expose this classification in the final response.
+
+STEP 3 — GENERATE THE FOLLOW-UP
+
+The follow-up MUST:
+
+- Be directly grounded in something the candidate actually said.
+- Test exactly ONE unresolved point.
+- Continue the same conversational thread.
+- Be appropriate for the candidate's role and interview type.
+- Be concise and natural when spoken by a human interviewer.
+- Reveal additional evidence about the candidate's knowledge, reasoning, judgement,
+  experience, or communication ability.
+- Be answer-dependent. The question should clearly feel like a response to THIS answer,
+  not a generic question that could follow anything.
+
+Do NOT:
+
+- Repeat or reword the original question.
+- Ask "Can you elaborate?"
+- Ask "Can you explain that further?"
+- Ask "Can you tell me more?"
+- Ask generic filler questions.
+- Introduce an unrelated topic.
+- Invent facts, projects, technologies, conflicts, decisions, responsibilities,
+  metrics, or experiences that the candidate never mentioned.
+- Combine multiple independent questions into one.
+- Force a follow-up when the answer is already sufficiently complete.
+
+MODE-SPECIFIC GUIDANCE:
+
+TECHNICAL:
+- Probe correctness, reasoning, complexity, trade-offs, edge cases, limitations,
+  scalability, failure modes, or practical implications.
+- If the candidate proposes an approach, probe why it works or when it would fail.
+- If the candidate gives a definition, probe application, limitation, or trade-off.
+- If the candidate compares approaches, probe the condition under which the choice changes.
+- If the candidate gives a strong answer, deepen it rather than inventing a flaw.
+
+HR:
+- Probe the actual situation, responsibility, decision, stakeholder handling,
+  accountability, result, or reflection described by the candidate.
+- If the candidate gives a vague story, ask for the missing concrete detail.
+- If the candidate describes an action, probe why they chose it.
+- If they describe a successful outcome, probe measurable impact or learning.
+- Never invent a conflict, leadership role, failure, or result.
+
+COMMUNICATION:
+- Probe the most important weakness actually visible in the answer:
+  clarity, structure, depth, relevance, audience awareness, or reasoning.
+- If the answer is vague, request a concrete example.
+- If the structure is weak, ask something that forces clearer organization.
+- If the answer is already strong, deepen the idea rather than criticizing it.
+- Stay within the selected communication mode.
+
+CUSTOM:
+- Stay tightly grounded in the original custom question and candidate answer.
+- Probe the most important missing reasoning, assumption, evidence, or implication.
+- Do not introduce unrelated subject matter.
+
+QUALITY CHECK:
+
+Before returning the result, verify:
+
+1. Could this question only have been generated after reading the candidate's answer?
+2. Does it test one specific unresolved point?
+3. Does it avoid assuming anything the candidate never said?
+4. Is it different from the original question?
+5. Would an experienced human interviewer genuinely ask it next?
+6. Is a follow-up actually necessary?
+
+OUTPUT ONLY THIS JSON:
+
+{
+  "shouldFollowUp": true,
+  "question": "..."
+}
+
+If no meaningful follow-up is warranted:
+
+{
+  "shouldFollowUp": false,
+  "question": ""
+}
+
+No markdown.
+No explanation.
+No extra fields.
 `;
-  const text = await callGroq(prompt, 0.7, 256);
-  return normalizeQuestionText(text);
+
+  const text = await callGroq(prompt, 0.5, 256);
+  const parsed = JSON.parse(extractJsonBlock(text));
+
+  return {
+    shouldFollowUp: Boolean(parsed?.shouldFollowUp),
+    question: parsed?.shouldFollowUp
+      ? normalizeQuestionText(parsed?.question)
+      : "",
+  };
+}
+
+const FEEDBACK_CHUNK_SIZE = 5;
+
+function buildQaPairsText(sessionData, indices, mode, communicationMode) {
+  return indices
+    .map((i) => {
+      const item = sessionData[i];
+      const communicationModeHint =
+        mode === "communication"
+          ? `\nCommunication Mode Hint: ${inferCommunicationEvalMode(
+              item.question,
+              communicationMode,
+            )}`
+          : "";
+      return `[ITEM_ID: ${i}]\nQ${i + 1}: ${item.question}${communicationModeHint}\nA${i + 1}: ${item.answer || "[No answer]"}`;
+    })
+    .join("\n\n");
+}
+
+function buildPerQuestionPrompt({
+  qaPairsText,
+  roleLabel,
+  humanModeLabel,
+  subjectLabel,
+  communicationModeLabel,
+  difficultyLabel,
+  scoringFocus,
+  interviewerIntent,
+}) {
+  return `
+You are a senior interviewer evaluating a ${roleLabel} candidate.
+
+Interview Context:
+- Interview Type: ${humanModeLabel}
+- Subject: ${subjectLabel}
+- Communication Mode: ${communicationModeLabel || "N/A"}
+- Role: ${roleLabel}
+- Difficulty: ${difficultyLabel}
+- Evaluation Focus: ${scoringFocus}
+- Interviewer Intent: ${interviewerIntent}
+
+Interview Data (this is a PARTIAL batch of a longer interview — only evaluate the
+items shown below, do not reference or assume any other questions exist):
+${qaPairsText}
+
+Evaluation Rules:
+- Be strict and objective. Do NOT give generic praise. Penalize incomplete or vague answers.
+- If an answer says "[Question skipped. No answer submitted.]", treat it as skipped and score 0 across all fields.
+- whatWentWell and whatWasMissed must be grounded in specifics from THAT candidate's
+  actual answer — never a generic, could-apply-to-any-answer sentence.
+- missedPoints: 2-4 specific, substantive points relevant to THAT SPECIFIC QUESTION.
+  Never use meta-phrasing like "a specific example of..." — name the actual point directly.
+- idealAnswer MUST be a complete, interview-ready rewrite of THIS candidate's own
+  answer with real substance, not a one-line description. Keep it efficient (3-4 sentences).
+- CRITICAL: Each item above starts with [ITEM_ID: N]. Copy that exact number into
+  questionIndex for the entry describing that item. Do not infer position yourself.
+
+Return ONLY valid JSON, an array with exactly one object per item above:
+[
+  {
+    "questionIndex": 0,
+    "techScore": 0,
+    "commScore": 0,
+    "completenessScore": 0,
+    "scores": { "clarity": 0, "structure": 0, "fluency": 0, "depth": 0, "relevance": 0 },
+    "whatWentWell": "",
+    "whatWasMissed": "",
+    "missedPoints": ["", ""],
+    "idealAnswer": "",
+    "fillerWords": {"um": 0, "uh": 0, "like": 0}
+  }
+]
+No markdown. No extra text. Return ONLY the JSON array.
+`;
+}
+
+async function synthesizeOverallFeedback(perQuestion, ctx) {
+  const condensed = perQuestion
+    .map(
+      (item, i) =>
+        `Q${i + 1} — Tech: ${item.techScore}/10, Comm: ${item.commScore}/10, Complete: ${item.completenessScore}/10\nWent well: ${item.whatWentWell || "N/A"}\nMissed: ${item.whatWasMissed || "N/A"}`,
+    )
+    .join("\n\n");
+
+  const prompt = `
+You are a senior interviewer writing the final overall summary for a ${ctx.roleLabel} candidate's ${ctx.humanModeLabel} interview (${ctx.subjectLabel}, ${ctx.difficultyLabel} difficulty), based on per-question results already evaluated below.
+
+Per-question results:
+${condensed}
+
+Synthesize an honest, specific overall summary of the WHOLE session — name real
+patterns across multiple questions (recurring strengths, recurring gaps), not a
+vague restatement. Do not invent detail not present above.
+
+Return ONLY valid JSON:
+{ "summary": "", "whatWentWell": ["", "", ""], "areasToImprove": ["", "", ""], "studySuggestions": ["", "", ""] }
+No markdown. No extra text.
+`;
+
+  const parsed = await callGroqForJson(prompt, 0.4, 900);
+  return {
+    summary: String(parsed?.summary || "").trim(),
+    whatWentWell: toStringArrayNoPad(
+      parsed?.whatWentWell,
+      "Provide stronger, specific examples to highlight your strengths.",
+    ),
+    areasToImprove: toStringArrayNoPad(
+      parsed?.areasToImprove,
+      "Add more detail and structure to improve answer quality.",
+    ),
+    studySuggestions: toStringArrayNoPad(
+      parsed?.studySuggestions,
+      "Practice timed mock interviews and review your weaker areas.",
+    ),
+  };
 }
 
 export async function generateFeedback(sessionData, context = {}) {
@@ -997,12 +1331,19 @@ export async function generateFeedback(sessionData, context = {}) {
       averageScores.relevance,
     ]);
 
+    // Exclude skipped questions from the session-wide rollup — their boilerplate
+    // ("no strengths to highlight", "answer was skipped") would otherwise crowd
+    // out real feedback from the questions that were actually answered.
+    const answeredEvaluations = evaluations.filter(
+      (_, index) => !sessionData[index]?.skipped,
+    );
+
     const whatWentWell = toStringArray(
-      evaluations.flatMap((item) => item.whatWentWell),
+      answeredEvaluations.flatMap((item) => item.whatWentWell),
       "The answer had a usable core idea, but it needed stronger communication discipline.",
     );
     const areasToImprove = toStringArray(
-      evaluations.flatMap((item) => item.issues),
+      answeredEvaluations.flatMap((item) => item.issues),
       "The answer needed clearer structure, stronger precision, and less filler.",
     );
     const weakestAreas = getWeakestCommunicationAreas(averageScores);
@@ -1055,6 +1396,125 @@ export async function generateFeedback(sessionData, context = {}) {
     );
   }
 
+  const humanModeLabel = humanizeId(mode);
+
+  if (sessionData.length > FEEDBACK_CHUNK_SIZE) {
+    const chunks = [];
+    for (
+      let start = 0;
+      start < sessionData.length;
+      start += FEEDBACK_CHUNK_SIZE
+    ) {
+      chunks.push(
+        Array.from(
+          { length: Math.min(FEEDBACK_CHUNK_SIZE, sessionData.length - start) },
+          (_, offset) => start + offset,
+        ),
+      );
+    }
+
+    const perQuestionMap = new Map();
+
+    for (const chunkIndices of chunks) {
+      const qaPairsText = buildQaPairsText(
+        sessionData,
+        chunkIndices,
+        mode,
+        communicationMode,
+      );
+      const prompt = buildPerQuestionPrompt({
+        qaPairsText,
+        roleLabel,
+        humanModeLabel,
+        subjectLabel,
+        communicationModeLabel,
+        difficultyLabel,
+        scoringFocus: modeConfig.scoringFocus,
+        interviewerIntent: modeConfig.interviewerIntent,
+      });
+
+      const parsedChunk = await callGroqForJson(
+        prompt,
+        0.4,
+        900 + chunkIndices.length * 500,
+      );
+      const rawChunkItems = Array.isArray(parsedChunk) ? parsedChunk : [];
+      const chunkMap = buildIndexedFeedbackMap(
+        rawChunkItems,
+        sessionData.length,
+      );
+
+      for (const index of chunkIndices) {
+        perQuestionMap.set(index, chunkMap.get(index) || {});
+      }
+    }
+
+    const perQuestion = Array.from(
+      { length: sessionData.length },
+      (_, index) => {
+        const item = perQuestionMap.get(index) || {};
+        const fillerWords =
+          item?.fillerWords && typeof item.fillerWords === "object"
+            ? item.fillerWords
+            : {};
+        const missedPoints = Array.isArray(item?.missedPoints)
+          ? item.missedPoints
+              .filter(Boolean)
+              .map((p) => String(p).trim())
+              .filter(Boolean)
+          : [];
+
+        return {
+          questionIndex: index,
+          techScore: clampScore(item?.techScore),
+          commScore: clampScore(item?.commScore),
+          completenessScore: clampScore(item?.completenessScore),
+          scores: normalizeCommunicationScores(item?.scores),
+          whatWentWell: String(item?.whatWentWell || "").trim(),
+          whatWasMissed: String(item?.whatWasMissed || "").trim(),
+          missedPoints,
+          idealAnswer: String(item?.idealAnswer || "").trim(),
+          fillerWords: {
+            um: Number(fillerWords.um) || 0,
+            uh: Number(fillerWords.uh) || 0,
+            like: Number(fillerWords.like) || 0,
+          },
+        };
+      },
+    );
+
+    const overall = await synthesizeOverallFeedback(perQuestion, {
+      roleLabel,
+      humanModeLabel,
+      subjectLabel,
+      difficultyLabel,
+    });
+
+    const scoredQuestions = perQuestion.filter(
+      (_, index) => !sessionData[index]?.skipped,
+    );
+    const avg = (key) =>
+      scoredQuestions.length > 0
+        ? averageScore(scoredQuestions.map((q) => q[key]))
+        : 0;
+
+    return attachSpeechMetrics(
+      {
+        overallTechScore: avg("techScore"),
+        overallCommScore: avg("commScore"),
+        overallCompletenessScore: avg("completenessScore"),
+        summary:
+          overall.summary ||
+          "Your interview was reviewed across multiple batches.",
+        whatWentWell: overall.whatWentWell,
+        areasToImprove: overall.areasToImprove,
+        studySuggestions: overall.studySuggestions,
+        perQuestion,
+      },
+      sessionData,
+    );
+  }
+
   const qaPairs = sessionData
     .map((item, i) => {
       const communicationModeHint =
@@ -1065,7 +1525,7 @@ export async function generateFeedback(sessionData, context = {}) {
             )}`
           : "";
 
-      return `Q${i + 1}: ${item.question}${communicationModeHint}\nA${i + 1}: ${item.answer || "[No answer]"}`;
+      return `[ITEM_ID: ${i}]\nQ${i + 1}: ${item.question}${communicationModeHint}\nA${i + 1}: ${item.answer || "[No answer]"}`;
     })
     .join("\n\n");
   const communicationRules =
@@ -1160,6 +1620,17 @@ Evaluation Rules:
 - Do NOT give generic praise
 - Penalize incomplete or vague answers
 - If an answer says "[Question skipped. No answer submitted.]", treat it as skipped and score that per-question item as 0 across all scoring fields.
+- CRITICAL: Each Q/A pair above starts with a tag like [ITEM_ID: 3]. You MUST set
+  perQuestion[i].questionIndex to the EXACT number from that tag for the item you are
+  describing — copy the number directly from the tag, do not infer or count positions
+  yourself. This is the single most important rule in this task: a wrong questionIndex
+  means the feedback gets shown on the wrong question entirely.
+- Before finalizing your output, go through every single [ITEM_ID: N] tag above one at
+  a time, in order, and confirm you have produced exactly one perQuestion entry whose
+  questionIndex is N, whose content is about THAT specific answer, and whose skipped
+  status matches what that answer actually contains. A main question and a skipped
+  follow-up next to it are two separate IDs — never merge their content or swap which
+  one gets real feedback vs. "not answered" treatment.
 - Reward clarity, correctness, and depth
 - Evaluate based on role expectations (${roleLabel})
 - Keep the evaluation aligned with the selected interview type
@@ -1191,9 +1662,9 @@ CRITICAL INSTRUCTION FOR perQuestion[i].missedPoints:
   genuinely nothing more to add, which should be rare.
 
 CRITICAL INSTRUCTION FOR perQuestion[i].idealAnswer:
-- idealAnswer MUST be a genuinely elaborate, complete, interview-ready rewrite of THIS
-  candidate's own answer — several sentences of real substance, not a short summary or
-  a one-line description of what a good answer would contain.
+- idealAnswer MUST be a complete, interview-ready rewrite of THIS candidate's own
+  answer — real substance, not a one-line description of what a good answer would
+  contain. ${sessionData.length > 6 ? "This session has many questions — keep each rewrite focused and efficient (roughly 3-4 sentences) rather than maximally long, since depth across ALL questions matters more than length on any single one." : "Several sentences of real substance is appropriate here."}
 - Keep the same core idea, examples, and facts the candidate actually gave.
 - Do NOT invent new facts, projects, or outcomes the candidate never mentioned,
   EXCEPT for weaving in the specific missedPoints you identified above — those
@@ -1241,8 +1712,8 @@ Return ONLY valid JSON:
 No markdown. No extra text.
 `;
 
-  const text = await callGroq(prompt, 0.4, 3200);
-  const parsed = JSON.parse(extractJsonBlock(text));
+  const feedbackTokenBudget = 1200 + sessionData.length * 400;
+  const parsed = await callGroqForJson(prompt, 0.4, feedbackTokenBudget);
   return attachSpeechMetrics(
     normalizeFeedback(parsed, sessionData.length),
     sessionData,

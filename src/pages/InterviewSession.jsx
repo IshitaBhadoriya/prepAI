@@ -471,7 +471,8 @@ function InterviewSession() {
             mode === "custom"
               ? customQuestionSetName || subject || "custom question bank"
               : technicalSubjects;
-          const followUp = await generateFollowUp(
+
+          const followUpResult = await generateFollowUp(
             currentQuestion,
             finalAnswer,
             role,
@@ -480,8 +481,12 @@ function InterviewSession() {
             communicationMode,
           );
 
-          if (followUp && followUp.length > 5) {
-            setCurrentQuestion(followUp);
+          if (
+            followUpResult?.shouldFollowUp &&
+            followUpResult.question &&
+            followUpResult.question.length > 5
+          ) {
+            setCurrentQuestion(followUpResult.question);
             setIsFollowup(true);
             setFollowUpCount(1);
             setAnswers(newAnswers);
@@ -602,7 +607,9 @@ function InterviewSession() {
             <h1 className="mt-2 text-2xl font-bold text-[var(--pf-text)]">
               Questions did not load.
             </h1>
-            <p className="mt-3 text-sm leading-6 text-[var(--pf-text-secondary)]">{error}</p>
+            <p className="mt-3 text-sm leading-6 text-[var(--pf-text-secondary)]">
+              {error}
+            </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={retryLoadingQuestions}
@@ -638,7 +645,9 @@ function InterviewSession() {
           <span className="text-[var(--pf-muted)] text-sm">
             Question {currentIndex + 1} of {totalQuestions}
             {isFollowup && (
-              <span className="ml-2 text-[var(--pf-warning)] text-xs">(follow-up)</span>
+              <span className="ml-2 text-[var(--pf-warning)] text-xs">
+                (follow-up)
+              </span>
             )}
           </span>
         </div>
@@ -650,7 +659,9 @@ function InterviewSession() {
             </span>
             <span
               className={`text-sm font-bold ${
-                timeLeft <= 20 ? "text-[var(--pf-danger)]" : "text-[var(--pf-text)]"
+                timeLeft <= 20
+                  ? "text-[var(--pf-danger)]"
+                  : "text-[var(--pf-text)]"
               }`}
               aria-live="polite"
             >
@@ -694,7 +705,9 @@ function InterviewSession() {
         {/* Answer Input */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-[var(--pf-muted)] text-sm">Your Answer</label>
+            <label className="text-[var(--pf-muted)] text-sm">
+              Your Answer
+            </label>
             {isSupported && (
               <button
                 onClick={handleMicToggle}
