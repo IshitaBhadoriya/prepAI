@@ -221,7 +221,6 @@ function InterviewSession() {
       return;
     }
 
-    webSpeech.resetTranscript();
     webSpeech.startListening();
   }, [useWebSpeechFallback, webSpeech]);
 

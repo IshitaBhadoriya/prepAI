@@ -57,6 +57,7 @@ export function useDeepgramTranscription() {
   const streamRef = useRef(null);
   const timerRef = useRef(null);
   const startedAtRef = useRef(0);
+  const accumulatedDurationRef = useRef(0);
   const manuallyStoppedRef = useRef(false);
   const finalTranscriptRef = useRef("");
   const interimTranscriptRef = useRef("");
@@ -161,11 +162,10 @@ export function useDeepgramTranscription() {
     isConnectingRef.current = true;
     setIsConnecting(true);
     manuallyStoppedRef.current = false;
-    finalTranscriptRef.current = "";
-    interimTranscriptRef.current = "";
-    setTranscript("");
-    setWords([]);
-    setDuration(0);
+    // Transcript/words/duration are intentionally NOT cleared here — clearing
+    // only happens in resetTranscript(), called when moving to a new question.
+    // This lets stopping and restarting the mic mid-answer keep what was
+    // already said instead of wiping it.
     setConnectionError(null);
 
     try {
@@ -188,7 +188,10 @@ export function useDeepgramTranscription() {
         startedAtRef.current = Date.now();
         setIsListening(true);
         timerRef.current = window.setInterval(() => {
-          setDuration((Date.now() - startedAtRef.current) / 1000);
+          setDuration(
+            accumulatedDurationRef.current +
+              (Date.now() - startedAtRef.current) / 1000,
+          );
         }, 250);
         recorder.start(TIMESLICE_MS);
       };
@@ -248,15 +251,18 @@ export function useDeepgramTranscription() {
   function stopListening() {
     if (!isListening && !socketRef.current && !recorderRef.current) return;
     manuallyStoppedRef.current = true;
-    setDuration(
-      startedAtRef.current ? (Date.now() - startedAtRef.current) / 1000 : 0,
-    );
+    if (startedAtRef.current) {
+      accumulatedDurationRef.current +=
+        (Date.now() - startedAtRef.current) / 1000;
+    }
+    setDuration(accumulatedDurationRef.current);
     cleanup();
   }
 
   function resetTranscript() {
     finalTranscriptRef.current = "";
     interimTranscriptRef.current = "";
+    accumulatedDurationRef.current = 0;
     setTranscript("");
     setWords([]);
     setDuration(0);
