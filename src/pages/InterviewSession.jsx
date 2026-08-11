@@ -221,9 +221,13 @@ function InterviewSession() {
       return;
     }
 
+    // Depend only on primitive values, not the whole `webSpeech` object —
+    // that object is a new reference every render, which made this effect
+    // re-fire on every re-render (not just when the fallback actually
+    // changed) and call startListening() while it was already running.
     webSpeech.startListening();
-  }, [useWebSpeechFallback, webSpeech]);
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useWebSpeechFallback, webSpeech.isListening, webSpeech.isSupported]);
   const resetSpeechTranscripts = useCallback(() => {
     deepgram.resetTranscript();
     webSpeech.resetTranscript();
